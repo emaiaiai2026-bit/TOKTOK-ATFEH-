@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>توكتوك - السواق</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --blue:#1A56DB; --blue-dark:#1244B0; --navy:#0B1F4B; --tint:#EAF1FF;
+    --acc:#FFB400; --acc-ink:#4A3200; --line:#DCE3F0; --muted:#5B6B8C; --danger:#B42318; --go:#1F9D55;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:'Cairo',system-ui,sans-serif;color:var(--navy);background:var(--tint)}
+  .hidden{display:none !important}
+  button,input{font-family:inherit;font-size:16px}
+  button{cursor:pointer;border:0}
+  :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+  input{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--navy);margin-bottom:10px;outline:none}
+  input::placeholder{color:#8A97B4}
+  input:focus{border-color:var(--blue)}
+
+  .btn{width:100%;background:var(--blue);color:#fff;border-radius:14px;padding:14px 0;font-size:17px;font-weight:700}
+  .btn:active{background:var(--blue-dark)}
+  .btn:disabled{opacity:.6}
+  .btn.go{background:var(--go)}
+  .btn-outline{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:12px;padding:11px 0;font-size:15px;font-weight:700;text-decoration:none}
+  .btn-text{width:100%;background:transparent;color:var(--danger);font-size:15px;font-weight:600;padding:12px 0 0}
+  .mini{background:var(--tint);color:var(--blue);border-radius:10px;padding:6px 14px;font-size:13px;font-weight:700}
+
+  /* ===== الدخول ===== */
+  #authScreen{min-height:100%;display:flex;flex-direction:column;background:var(--navy)}
+  .hero{padding:64px 24px 30px;color:#fff}
+  .hero h1{margin:0;font-size:34px;font-weight:800;display:inline-block;border-bottom:5px solid var(--acc);line-height:1.3}
+  .hero p{margin:10px 0 0;color:#B8C6E8;font-size:16px}
+  .authsheet{background:#fff;border-radius:24px 24px 0 0;padding:22px 20px 32px;flex:1}
+  .tabs{display:flex;background:var(--tint);border-radius:12px;padding:4px;margin-bottom:16px}
+  .tabs button{flex:1;background:transparent;color:var(--muted);border-radius:9px;padding:10px 0;font-size:15px;font-weight:600}
+  .tabs button.on{background:#fff;color:var(--blue);font-weight:700;border:1px solid var(--line)}
+  .msg{min-height:22px;margin:10px 0 0;color:var(--danger);font-size:14px}
+
+  /* ===== التطبيق ===== */
+  #appScreen{position:fixed;inset:0}
+  #map{position:absolute;inset:0;direction:ltr;background:#E8EEF7}
+  .leaflet-tile-pane{filter:saturate(.55) brightness(1.04)}
+  .leaflet-top.leaflet-left{top:62px}
+  .mapbtns{position:absolute;right:12px;top:calc(66px + env(safe-area-inset-top));z-index:1100;display:flex;flex-direction:column;gap:8px}
+  .mbtn{width:46px;height:46px;border-radius:50%;background:#fff;color:var(--navy);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+  .mbtn:active{background:var(--tint)}
+  .mbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .topbar{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;z-index:1100;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
+  .brandpill{pointer-events:auto;background:#fff;border-radius:22px;padding:6px 18px;font-weight:800;font-size:16px;color:var(--navy);border:1px solid var(--line);border-bottom:3px solid var(--acc)}
+  .logout{pointer-events:auto;background:#fff;color:var(--navy);border-radius:22px;padding:8px 16px;font-size:14px;font-weight:600;border:1px solid var(--line)}
+  #sheet{position:absolute;left:0;right:0;bottom:0;z-index:1100;background:#fff;border-radius:24px 24px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;overflow:auto;border-top:1px solid var(--line)}
+  .pushrow{display:flex;align-items:center;justify-content:space-between;gap:10px;background:#FFF6DB;border:1px solid #F3D88A;border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:13px;color:var(--acc-ink)}
+  .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+
+  .title{font-size:20px;font-weight:800;margin:0 0 4px}
+  .sub{color:var(--muted);font-size:14px;margin:0 0 14px}
+  .onhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .live{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px}
+  .ldot{width:12px;height:12px;border-radius:50%;background:var(--go);flex:none}
+  @media (prefers-reduced-motion:no-preference){ .ldot{animation:pulse 1.6s ease-in-out infinite} @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}} }
+  .empty{background:var(--tint);border-radius:12px;padding:16px;text-align:center;color:var(--muted);font-size:14px}
+
+  .req{border:1.5px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px}
+  .reqtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .chip{background:var(--acc);color:var(--acc-ink);border-radius:20px;padding:3px 14px;font-size:16px;font-weight:800}
+  .near{font-size:14px;color:var(--navy);font-weight:700}
+  .line{display:flex;align-items:center;gap:10px;font-size:14px;margin:4px 0}
+  .dot{width:12px;height:12px;border-radius:50%;border:3px solid var(--blue);flex:none}
+  .sq{width:12px;height:12px;border-radius:3px;background:var(--navy);flex:none}
+  .req .btn{margin-top:10px;padding:12px 0;font-size:16px}
+
+  .stat{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:800;margin-bottom:12px}
+  .sdot{width:12px;height:12px;border-radius:50%;background:var(--acc);flex:none}
+  .sdot.done{background:var(--go)}
+  .cust{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+  .avatar{width:46px;height:46px;border-radius:50%;background:var(--tint);color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex:none}
+  #custName{font-weight:700;font-size:16px}
+  #custPhone{font-size:13px;color:var(--muted)}
+  .actions{display:flex;gap:8px;margin-bottom:10px}
+  .box{background:var(--tint);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+  .collect{background:var(--acc);color:var(--acc-ink);border-radius:14px;padding:14px;text-align:center;font-size:20px;font-weight:800;margin-bottom:12px}
+
+  .pin{width:26px;height:26px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;border:1px solid rgba(11,31,75,.2)}
+  .pin::after{content:'';width:12px;height:12px;border-radius:50%;background:var(--blue)}
+  .pin.d{border-radius:8px;background:var(--navy)}
+  .pin.d::after{width:8px;height:8px;border-radius:2px;background:#fff}
+  .pin.v{width:30px;height:30px;background:var(--acc)}
+  .pin.v::after{background:var(--navy)}
+
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- ===== الدخول ===== -->
+<div id="authScreen">
+  <div class="hero">
+    <h1 id="brandName">توكتوك للسواقين</h1>
+    <p>استقبل الطلبات القريبة منك</p>
+  </div>
+  <div class="authsheet">
+    <div class="tabs">
+      <button id="tabLogin" class="on">دخول</button>
+      <button id="tabSignup">سواق جديد</button>
+    </div>
+    <input id="phone" placeholder="رقم الموبايل (01xxxxxxxxx)" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
+    <input id="name" class="signup hidden" placeholder="الاسم" autocomplete="name" aria-label="الاسم">
+    <input id="plate" class="signup hidden" placeholder="رقم التوكتوك" aria-label="رقم التوكتوك">
+    <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password" aria-label="الباسورد">
+    <button id="authBtn" class="btn">دخول</button>
+    <p id="authMsg" class="msg" role="alert"></p>
+  </div>
+</div>
+
+<!-- ===== التطبيق ===== -->
+<div id="appScreen" class="hidden">
+  <div id="map"></div>
+  <div class="topbar">
+    <div class="brandpill">توكتوك سواق</div>
+    <button class="logout" id="logoutBtn">خروج</button>
+  </div>
+
+  <div class="mapbtns">
+    <button class="mbtn on" id="recenterBtn" aria-label="الخريطة تتبعني">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    </button>
+  </div>
+
+  <div id="sheet">
+    <div class="grab"></div>
+
+    <div class="pushrow hidden" id="pushRow">
+      <span id="pushText">فعّل الإشعارات عشان توصلك الطلبات والشاشة مقفولة</span>
+      <button class="mini" id="pushBtn">فعّل</button>
+    </div>
+
+    <!-- غير متاح -->
+    <div id="offlinePanel">
+      <p class="title">أنت غير متاح</p>
+      <p class="sub">اضغط ابدأ الشغل عشان تستقبل الطلبات القريبة منك. سيب الشاشة مفتوحة وفعّل الـGPS.</p>
+      <button id="goOnline" class="btn go">ابدأ الشغل</button>
+    </div>
+
+    <!-- متاح: قايمة الطلبات -->
+    <div id="onlinePanel" class="hidden">
+      <div class="onhead">
+        <div class="live"><span class="ldot"></span>متاح للطلبات</div>
+        <button id="goOffline" class="mini">وقّف الشغل</button>
+      </div>
+      <div id="reqList"></div>
+    </div>
+
+    <!-- رحلة شغالة -->
+    <div id="ridePanel" class="hidden">
+      <div class="stat"><span class="sdot" id="statusDot"></span><span id="statusText"></span></div>
+      <div class="cust">
+        <div class="avatar" id="custAvatar"></div>
+        <div style="flex:1;min-width:0"><div id="custName"></div><div id="custPhone" dir="ltr" style="text-align:right"></div></div>
+      </div>
+      <div class="actions" id="contactBox">
+        <a id="callBtn" class="btn-outline" href="#">اتصال</a>
+        <a id="waBtn" class="btn-outline" href="#" target="_blank" rel="noopener">واتساب</a>
+      </div>
+      <div class="box">
+        <div class="line"><span class="dot"></span><span id="fromText"></span></div>
+        <div class="line"><span class="sq"></span><span id="toText"></span></div>
+      </div>
+      <div class="collect" id="collectBox"></div>
+      <button id="stepBtn" class="btn"></button>
+      <button id="cancelBtn" class="btn-text">إلغاء الرحلة</button>
+      <button id="doneBtn" class="btn hidden">رجوع للطلبات</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden" role="status"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============ إعدادات - غيّر هنا بس ============ */
+const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
+const DEFAULT_CENTER = [29.0661, 31.0994];
+const EMAIL_DOMAIN = 'tuktuk.app';
+const VAPID_PUBLIC_KEY = 'BE8FDY-_g-GpQdCDDOJ156zFHJ-EAU-y3bxQc-lzRWUJ5YGaTBdJxhNiI34erTq325Ckklf7acno1W76Ie4gKWM';
+const SEND_EVERY_MS = 8000;      // كل قد إيه يبعت موقعه
+/* ================================================ */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let me = null, map = null, online = false, myPos = null, lastSent = 0, watchId = null, firstFix = true;
+let driverMarker = null, pickupMarker = null, dropMarker = null, reqMarkers = [];
+let currentRideId = null, fittedRideId = null, pollTimer = null, polling = false;
+let isSignup = false, seenReqs = new Set(), audioCtx = null, wakeLock = null;
+let following = true, lastFollow = null;
+const customerCache = {};
+
+function toast(text){
+  const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+/* ---------- الدخول والتسجيل ---------- */
+function setTab(signup){
+  isSignup = signup;
+  $('tabLogin').classList.toggle('on', !signup);
+  $('tabSignup').classList.toggle('on', signup);
+  document.querySelectorAll('.signup').forEach(el => el.classList.toggle('hidden', !signup));
+  $('authBtn').textContent = signup ? 'إنشاء حساب سواق' : 'دخول';
+  $('password').autocomplete = signup ? 'new-password' : 'current-password';
+  $('authMsg').textContent = '';
+}
+$('tabLogin').onclick = () => setTab(false);
+$('tabSignup').onclick = () => setTab(true);
+
+function arabicError(e){
+  const m = (e && e.message) || '';
+  if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
+  if (m.includes('already registered')) return 'الرقم ده مسجّل قبل كده، جرّب تدخل';
+  if (m.includes('Password should')) return 'الباسورد لازم يكون 6 حروف على الأقل';
+  if (m.includes('Email not confirmed')) return 'تأكيد الإيميل لسه مفعّل في إعدادات Supabase';
+  return m ? 'مشكلة: ' + m : 'حصل خطأ، حاول تاني';
+}
+
+function normalizePhone(raw){
+  let p = String(raw || '').replace(/\D/g, '');
+  if (p.startsWith('0020')) p = '0' + p.slice(4);
+  else if (p.startsWith('20') && p.length === 12) p = '0' + p.slice(2);
+  else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
+  return /^01[0125]\d{8}$/.test(p) ? p : null;
+}
+
+$('authBtn').onclick = async () => {
+  const password = $('password').value;
+  const name = $('name').value.trim();
+  const plate = $('plate').value.trim();
+  const phone = normalizePhone($('phone').value);
+  $('authMsg').textContent = '';
+  if (!phone) { $('authMsg').textContent = 'اكتب رقم موبايل مصري صحيح (11 رقم)'; return; }
+  if (!password) { $('authMsg').textContent = 'اكتب الباسورد'; return; }
+  if (isSignup && (!name || !plate)) { $('authMsg').textContent = 'اكتب اسمك ورقم التوكتوك'; return; }
+  const email = phone + '@' + EMAIL_DOMAIN;
+  $('authBtn').disabled = true;
+  let res;
+  if (isSignup) {
+    res = await sb.auth.signUp({ email, password, options: { data: { role: 'driver', name, phone, plate_number: plate } } });
+  } else {
+    res = await sb.auth.signInWithPassword({ email, password });
+  }
+  $('authBtn').disabled = false;
+  if (res.error) { $('authMsg').textContent = arabicError(res.error); return; }
+  if (!res.data.session) { $('authMsg').textContent = 'تم إنشاء الحساب. سجّل دخول دلوقتي.'; setTab(false); return; }
+  start();
+};
+
+$('logoutBtn').onclick = async () => {
+  if (online && !currentRideId) await setOnline(false);
+  await sb.auth.signOut(); location.reload();
+};
+
+/* ---------- بدء التطبيق ---------- */
+async function start(){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  me = user;
+  const { data: prof } = await sb.from('profiles').select('role').eq('id', me.id).maybeSingle();
+  if (prof && prof.role !== 'driver') {
+    toast('الحساب ده مش حساب سواق');
+    await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
+  }
+  $('authScreen').classList.add('hidden');
+  $('appScreen').classList.remove('hidden');
+  initMap();
+  setupPush(false);
+  poll();
+  clearInterval(pollTimer); pollTimer = setInterval(poll, 4000);
+}
+
+/* ---------- الخريطة ---------- */
+function pinIcon(cls){
+  return L.divIcon({ className: '', html: '<div class="pin ' + cls + '"></div>', iconSize: [30, 30], iconAnchor: [15, 15] });
+}
+
+function initMap(){
+  if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
+  map = L.map('map', { zoomControl: false }).setView(DEFAULT_CENTER, 14);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  map.attributionControl.setPosition('topleft');
+  map.on('dragstart', () => { following = false; updateFollowBtn(); });
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+function focusOn(ll, zoom){
+  map.setView(ll, zoom, { animate: false });
+  map.panBy([0, Math.round($('sheet').offsetHeight / 2)], { animate: false });
+}
+
+function haversine(a, b){
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/* ---------- الموقع والتواجد ---------- */
+function startTracking(){
+  if (!navigator.geolocation) { toast('المتصفح مش بيدعم تحديد الموقع'); return; }
+  stopTracking();
+  firstFix = true; lastSent = 0;
+  watchId = navigator.geolocation.watchPosition(pos => {
+    myPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+    if (driverMarker) driverMarker.setLatLng(myPos); else driverMarker = L.marker(myPos, { icon: pinIcon('v') }).addTo(map);
+    if (firstFix) { firstFix = false; if (!currentRideId) focusOn(myPos, 16); }
+    if (following && (!lastFollow || haversine(lastFollow, myPos) > 0.005)) {
+      lastFollow = myPos;
+      const z = map.getZoom();
+      const pt = map.project(myPos, z);
+      pt.y += Math.round($('sheet').offsetHeight / 2);
+      map.panTo(map.unproject(pt, z), { animate: true });
+    }
+    const now = Date.now();
+    if (online && now - lastSent > SEND_EVERY_MS) { lastSent = now; sendLocation(); }
+  }, () => toast('فعّل الموقع (GPS) عشان تستقبل طلبات'),
+  { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
+}
+
+function stopTracking(){
+  if (watchId !== null && navigator.geolocation) { navigator.geolocation.clearWatch(watchId); watchId = null; }
+}
+
+async function sendLocation(){
+  if (!myPos) return;
+  await sb.rpc('update_driver_location', { p_lat: myPos.lat, p_lng: myPos.lng, p_available: online });
+}
+
+async function keepAwake(){
+  try {
+    if ('wakeLock' in navigator && !wakeLock) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && online) keepAwake(); });
+
+async function setOnline(on){
+  online = on;
+  if (on) {
+    try { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    setupPush(true);
+    startTracking();
+    keepAwake();
+  } else {
+    stopTracking();
+    if (myPos) await sb.rpc('update_driver_location', { p_lat: myPos.lat, p_lng: myPos.lng, p_available: false });
+    clearReqMarkers();
+    seenReqs = new Set();
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  }
+  poll();
+}
+$('goOnline').onclick = () => setOnline(true);
+$('goOffline').onclick = () => setOnline(false);
+
+function beep(){
+  try {
+    if (audioCtx) {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      o.frequency.value = 880; g.gain.value = 0.15;
+      o.start(); setTimeout(() => o.stop(), 300);
+    }
+  } catch (e) {}
+  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+/* ---------- متابعة الطلبات والرحلات ---------- */
+function showPanel(name){
+  ['offlinePanel', 'onlinePanel', 'ridePanel'].forEach(id => $(id).classList.toggle('hidden', id !== name));
+}
+
+async function poll(){
+  if (!me || polling) return;
+  polling = true;
+  try {
+    let ride = null;
+    if (currentRideId) {
+      const { data } = await sb.from('rides').select('*').eq('id', currentRideId).maybeSingle();
+      ride = data;
+    } else {
+      const { data } = await sb.from('rides').select('*').eq('driver_id', me.id)
+        .in('status', ['accepted', 'arrived', 'started'])
+        .order('accepted_at', { ascending: false }).limit(1);
+      ride = data && data[0];
+      if (ride) currentRideId = ride.id;
+    }
+    if (ride) await renderRide(ride); else await renderIdle();
+  } finally { polling = false; }
+}
+
+function clearReqMarkers(){ reqMarkers.forEach(m => map.removeLayer(m)); reqMarkers = []; }
+
+async function renderIdle(){
+  if (pickupMarker) { map.removeLayer(pickupMarker); pickupMarker = null; }
+  if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
+  fittedRideId = null;
+  if (!online) { showPanel('offlinePanel'); clearReqMarkers(); return; }
+  showPanel('onlinePanel');
+  const { data, error } = await sb.rpc('nearby_requests');
+  if (error) { toast('مشكلة في جلب الطلبات'); return; }
+  renderRequests(data || []);
+}
+
+function renderRequests(list){
+  const box = $('reqList');
+  box.textContent = '';
+  clearReqMarkers();
+  if (!list.length) {
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.textContent = myPos ? 'مفيش طلبات قريبة دلوقتي. هنبلغك أول ما يظهر طلب.' : 'بنحدد موقعك... استنى ثواني.';
+    box.appendChild(d);
+    return;
+  }
+  let fresh = false;
+  list.forEach(r => {
+    if (!seenReqs.has(r.ride_id)) { seenReqs.add(r.ride_id); fresh = true; }
+    reqMarkers.push(L.marker([r.pickup_lat, r.pickup_lng], { icon: pinIcon('') }).addTo(map));
+
+    const card = document.createElement('div'); card.className = 'req';
+    const top = document.createElement('div'); top.className = 'reqtop';
+    const near = document.createElement('div'); near.className = 'near';
+    near.textContent = 'يبعد ' + Number(r.pickup_distance_km).toFixed(1) + ' كم عنك';
+    const chip = document.createElement('div'); chip.className = 'chip';
+    chip.textContent = r.price + ' جنيه';
+    top.appendChild(near); top.appendChild(chip);
+
+    const l1 = document.createElement('div'); l1.className = 'line';
+    const d1 = document.createElement('span'); d1.className = 'dot';
+    const t1 = document.createElement('span'); t1.textContent = r.pickup_text || 'نقطة على الخريطة';
+    l1.appendChild(d1); l1.appendChild(t1);
+    const l2 = document.createElement('div'); l2.className = 'line';
+    const d2 = document.createElement('span'); d2.className = 'sq';
+    const t2 = document.createElement('span');
+    t2.textContent = (r.drop_text || 'نقطة على الخريطة') + ' • الرحلة ' + Number(r.ride_distance_km).toFixed(1) + ' كم';
+    l2.appendChild(d2); l2.appendChild(t2);
+
+    const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = 'اقبل الرحلة';
+    btn.onclick = () => acceptRide(r.ride_id, btn);
+
+    card.appendChild(top); card.appendChild(l1); card.appendChild(l2); card.appendChild(btn);
+    box.appendChild(card);
+  });
+  if (fresh) beep();
+}
+
+async function acceptRide(id, btn){
+  btn.disabled = true;
+  const { data, error } = await sb.rpc('accept_ride', { p_ride_id: id });
+  btn.disabled = false;
+  if (error) { toast(error.message.includes('finish') ? 'خلّص رحلتك الحالية الأول' : error.message); return; }
+  if (data === false) { toast('الطلب ده اتاخد من سواق تاني'); poll(); return; }
+  currentRideId = id;
+  poll();
+}
+
+function waNumber(phone){
+  let p = String(phone || '').replace(/\D/g, '');
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('0')) p = '20' + p.slice(1);
+  return p;
+}
+
+function initials(name){
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '؟';
+  return parts.length > 1 ? parts[0][0] + parts[1][0] : parts[0][0];
+}
+
+const STATUS_TEXT = {
+  accepted: 'روح لنقطة الركوب',
+  arrived: 'أنت عند الزبون',
+  started: 'الرحلة شغالة',
+  completed: 'الرحلة خلصت',
+  cancelled: 'الزبون لغى الرحلة'
+};
+const STEP = {
+  accepted: { label: 'وصلت للزبون', next: 'arrived' },
+  arrived: { label: 'ابدأ الرحلة', next: 'started' },
+  started: { label: 'أنهي الرحلة', next: 'completed' }
+};
+
+async function renderRide(ride){
+  if (!online && ['accepted', 'arrived', 'started'].includes(ride.status)) { online = true; startTracking(); keepAwake(); }
+  clearReqMarkers();
+  showPanel('ridePanel');
+
+  const p = L.latLng(ride.pickup_lat, ride.pickup_lng), d = L.latLng(ride.drop_lat, ride.drop_lng);
+  if (pickupMarker) pickupMarker.setLatLng(p); else pickupMarker = L.marker(p, { icon: pinIcon('') }).addTo(map);
+  if (dropMarker) dropMarker.setLatLng(d); else dropMarker = L.marker(d, { icon: pinIcon('d') }).addTo(map);
+  if (fittedRideId !== ride.id) {
+    fittedRideId = ride.id;
+    following = false; updateFollowBtn();
+    const pts = [p, d]; if (myPos) pts.push(myPos);
+    map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 90], paddingBottomRight: [40, Math.round($('sheet').offsetHeight) + 30], maxZoom: 17 });
+  }
+
+  const finished = ride.status === 'completed' || ride.status === 'cancelled';
+  $('statusText').textContent = STATUS_TEXT[ride.status] || ride.status;
+  $('statusDot').className = 'sdot' + (ride.status === 'completed' ? ' done' : '');
+  $('fromText').textContent = ride.pickup_text || 'نقطة الركوب على الخريطة';
+  $('toText').textContent = ride.drop_text || 'نقطة الوصول على الخريطة';
+
+  $('collectBox').classList.toggle('hidden', ride.status === 'cancelled');
+  $('collectBox').textContent = (ride.status === 'completed' ? 'حصّل ' : 'الأجرة ') + ride.price + ' جنيه كاش';
+
+  const step = STEP[ride.status];
+  $('stepBtn').classList.toggle('hidden', !step);
+  if (step) { $('stepBtn').textContent = step.label; $('stepBtn').dataset.next = step.next; }
+  $('cancelBtn').classList.toggle('hidden', !['accepted', 'arrived'].includes(ride.status));
+  $('doneBtn').classList.toggle('hidden', !finished);
+  $('contactBox').classList.toggle('hidden', finished);
+
+  // بيانات الزبون
+  if (!customerCache[ride.customer_id]) {
+    const { data: c } = await sb.from('profiles').select('name,phone').eq('id', ride.customer_id).maybeSingle();
+    if (c) customerCache[ride.customer_id] = c;
+  }
+  const c = customerCache[ride.customer_id];
+  if (c) {
+    $('custAvatar').textContent = initials(c.name);
+    $('custName').textContent = c.name || 'الزبون';
+    $('custPhone').textContent = c.phone || '';
+    $('callBtn').href = 'tel:' + (c.phone || '');
+    $('waBtn').href = 'https://wa.me/' + waNumber(c.phone);
+  }
+}
+
+$('stepBtn').onclick = async () => {
+  if (!currentRideId) return;
+  const next = $('stepBtn').dataset.next;
+  $('stepBtn').disabled = true;
+  const { data, error } = await sb.rpc('set_ride_status', { p_ride_id: currentRideId, p_status: next });
+  $('stepBtn').disabled = false;
+  if (error) toast(error.message); else if (data === false) toast('حالة الرحلة اتغيرت، بنحدّث...');
+  poll();
+};
+
+$('cancelBtn').onclick = async () => {
+  if (!currentRideId) return;
+  if (!confirm('متأكد إنك عايز تلغي الرحلة؟')) return;
+  const { error } = await sb.rpc('set_ride_status', { p_ride_id: currentRideId, p_status: 'cancelled' });
+  if (error) toast(error.message);
+  poll();
+};
+
+$('doneBtn').onclick = () => {
+  currentRideId = null; fittedRideId = null;
+  following = true; lastFollow = null; updateFollowBtn();
+  if (myPos) focusOn(myPos, 16);
+  poll();
+};
+
+function updateFollowBtn(){ $('recenterBtn').classList.toggle('on', following); }
+$('recenterBtn').onclick = () => {
+  following = true; lastFollow = null; updateFollowBtn();
+  if (myPos) focusOn(myPos, 17); else toast('ابدأ الشغل الأول عشان نحدد موقعك');
+};
+
+/* ---------- إشعارات الطلبات (حتى والشاشة مقفولة) ---------- */
+function b64ToU8(b64){
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, c => c.charCodeAt(0));
+}
+
+function pushMsg(text, showBtn){
+  $('pushRow').classList.remove('hidden');
+  $('pushText').textContent = text;
+  $('pushBtn').classList.toggle('hidden', !showBtn);
+}
+
+async function setupPush(ask){
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    pushMsg('المتصفح ده مش بيدعم الإشعارات', false); return false;
+  }
+  if (Notification.permission === 'denied') {
+    pushMsg('الإشعارات مقفولة. افتحها من إعدادات الموقع في المتصفح (أيقونة القفل جنب الرابط).', false); return false;
+  }
+  if (Notification.permission !== 'granted') {
+    if (!ask) { pushMsg('فعّل الإشعارات عشان توصلك الطلبات والشاشة مقفولة', true); return false; }
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { pushMsg('لازم تسمح بالإشعارات عشان توصلك الطلبات', true); return false; }
+  }
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID_PUBLIC_KEY) });
+    const j = sub.toJSON();
+    const { error } = await sb.rpc('save_push_subscription', {
+      p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth,
+      p_page_url: location.origin + location.pathname
+    });
+    if (error) throw error;
+    $('pushRow').classList.add('hidden');
+    return true;
+  } catch (e) {
+    pushMsg('مقدرناش نفعّل الإشعارات: ' + (e.message || e), true);
+    return false;
+  }
+}
+$('pushBtn').onclick = () => setupPush(true).then(ok => { if (ok) toast('الإشعارات اتفعّلت'); });
+
+/* ---------- تشغيل ---------- */
+sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+</script>
+</body>
+</html>
