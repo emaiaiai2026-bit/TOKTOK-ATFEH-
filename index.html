@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0B1F4B">
 <title>توكتوك</title>
+<link rel="manifest" href="app-home.webmanifest">
+<link rel="icon" type="image/png" href="logo-192.png">
+<link rel="apple-touch-icon" href="logo-192.png">
+<script>
+var PAGES = { rider: 'rider-v17.html', driver: 'driver-v14.html' };
+try {
+  var saved = localStorage.getItem('tt_role');
+  if (saved && PAGES[saved] && location.search.indexOf('choose') === -1) location.replace(PAGES[saved]);
+} catch (e) {}
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
@@ -29,8 +39,17 @@ a:focus-visible{outline:3px solid #0B1F4B;outline-offset:3px}
 <div class="hero"><h1>توكتوك</h1><p>اطلب توكتوك لحد باب بيتك</p></div>
 <div class="sheet">
   <h2>اختار حسابك</h2>
-  <a class="card rider" href="rider-v16.html"><b>أنا زبون</b><span>اطلب توكتوك دلوقتي</span></a>
-  <a class="card driver" href="driver-v13.html"><b>أنا سواق</b><span>استقبل الطلبات القريبة منك</span></a>
+  <a class="card rider" data-role="rider" href="#"><b>أنا زبون</b><span>اطلب توكتوك دلوقتي</span></a>
+  <a class="card driver" data-role="driver" href="#"><b>أنا سواق</b><span>استقبل الطلبات القريبة منك</span></a>
 </div>
+<script>
+document.querySelectorAll('a.card').forEach(function (a) {
+  a.href = PAGES[a.dataset.role];
+  a.addEventListener('click', function () {
+    try { localStorage.setItem('tt_role', a.dataset.role); } catch (e) {}
+  });
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+</script>
 </body>
 </html>
