@@ -4,52 +4,94 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0B1F4B">
-<title>توكتوك</title>
+<title>خدماتنا</title>
 <link rel="manifest" href="app-home.webmanifest">
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
 <script>
-var PAGES = { rider: 'rider-v22.html', driver: 'driver-v19.html' };
+var PAGES = { rider: 'rider-v25.html', driver: 'driver-v21.html' };
 try {
   var saved = localStorage.getItem('tt_role');
-  if (saved && PAGES[saved] && location.search.indexOf('choose') === -1) location.replace(PAGES[saved]);
+  var fromApp = document.referrer.indexOf(location.origin) === 0;
+  var wantsChoose = location.search.indexOf('choose') !== -1 && fromApp;
+  if (saved === 'driver' && !wantsChoose) location.replace(PAGES.driver);
 } catch (e) {}
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#0B1F4B;color:#fff;font-family:'Cairo',system-ui,sans-serif}
-.hero{padding:72px 24px 28px}
-h1{margin:0;font-size:40px;font-weight:800;display:inline-block;border-bottom:5px solid #FFB400;line-height:1.3}
-.hero p{margin:12px 0 0;color:#B8C6E8;font-size:17px}
-.sheet{flex:1;background:#fff;border-radius:24px 24px 0 0;padding:28px 20px 40px;color:#0B1F4B}
-.sheet h2{margin:0 0 16px;font-size:19px}
-a.card{display:block;text-decoration:none;border-radius:18px;padding:20px;margin-bottom:14px}
-a.card b{display:block;font-size:22px;font-weight:800}
-a.card span{display:block;margin-top:4px;font-size:14px}
-.rider{background:#1A56DB;color:#fff}
-.rider span{color:#D6E4FF}
-.driver{background:#FFB400;color:#4A3200}
-.driver span{color:#6B4A00}
-a.card:active{opacity:.9}
-a:focus-visible{outline:3px solid #0B1F4B;outline-offset:3px}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#0B1F4B;color:#0B1F4B;font-family:'Cairo',system-ui,sans-serif}
+.hero{padding:56px 22px 36px;color:#fff}
+.hi{font-size:14px;color:#B8C6E8}
+h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bottom:4px solid #FFB400;line-height:1.4}
+.sub{margin-top:10px;font-size:14px;color:#B8C6E8}
+.sheet{flex:1;background:#EAF1FF;border-radius:24px 24px 0 0;margin-top:-16px;padding:20px 14px 32px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tile{border-radius:16px;padding:16px 6px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none}
+.tile.on{background:#fff;border:1px solid #DCE3F0;color:#0B1F4B}
+.tile.on:active{background:#F3F7FF}
+.tile.soon{background:#F7F9FD;border:1px dashed #C9D3E8;color:#5B6B8C}
+.ic{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.on .ic{background:#EAF1FF;color:#1A56DB}
+.soon .ic{background:#EEF1F8;color:#8A97B4}
+.ic svg{display:block}
+.lb{font-size:15px;font-weight:700;line-height:1.4}
+.chip{font-size:11px;background:#FFE9A8;color:#4A3200;border-radius:10px;padding:1px 10px;font-weight:700}
+a.drv{display:block;margin-top:14px;background:#FFB400;color:#4A3200;border-radius:18px;padding:18px 20px;text-decoration:none}
+a.drv b{display:block;font-size:20px;font-weight:800}
+a.drv span{display:block;margin-top:2px;font-size:13px;color:#6B4A00}
+a.drv:active{opacity:.9}
+a:focus-visible{outline:3px solid #1A56DB;outline-offset:3px}
 </style>
 </head>
 <body>
-<div class="hero"><h1>توكتوك</h1><p>اطلب توكتوك لحد باب بيتك</p></div>
+<div class="hero">
+  <div class="hi">أهلاً بيك</div>
+  <h1>اختار الخدمة</h1>
+  <div class="sub">حساب واحد لكل الخدمات</div>
+</div>
 <div class="sheet">
-  <h2>اختار حسابك</h2>
-  <a class="card rider" data-role="rider" href="#"><b>أنا زبون</b><span>اطلب توكتوك دلوقتي</span></a>
-  <a class="card driver" data-role="driver" href="#"><b>أنا سواق</b><span>استقبل الطلبات القريبة منك</span></a>
+  <div class="grid">
+    <a class="tile on" href="#" data-go="rider" data-type="tuktuk">
+      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="5" y="3" width="36" height="7" rx="3.5" fill="#1A56DB"/><rect x="8" y="8" width="31" height="23" rx="9" fill="#FFB400"/><rect x="31" y="20" width="23" height="12" rx="5" fill="#FFB400"/><rect x="13" y="13" width="17" height="11" rx="3" fill="#EAF1FF"/><circle cx="17" cy="36" r="7" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="47" cy="37" r="5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+      <div class="lb">أطلب توكتوك</div>
+    </a>
+    <a class="tile on" href="#" data-go="rider" data-type="car">
+      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><path d="M15 19 L22 8 H42 L50 19 Z" fill="#FFB400"/><rect x="4" y="18" width="56" height="15" rx="6" fill="#FFB400"/><path d="M21 18 L25.5 10.5 H31 V18 Z M33 18 V10.5 H41 L46 18 Z" fill="#EAF1FF"/><circle cx="18" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="46" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+      <div class="lb">أطلب عربية ملاكي</div>
+    </a>
+    <div class="tile soon">
+      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="3" y="7" width="58" height="26" rx="7" fill="#C5CDE0"/><rect x="8" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="20" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="32" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><path d="M44 12 H55 L58 21 H44 Z" fill="#F7F9FD"/><circle cx="16" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/><circle cx="48" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/></svg></div>
+      <div class="lb">ميكروباص</div>
+      <span class="chip">قريباً</span>
+    </div>
+    <div class="tile soon">
+      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></div>
+      <div class="lb">حجز عند دكتور</div>
+      <span class="chip">قريباً</span>
+    </div>
+    <div class="tile soon">
+      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v6a2 2 0 0 0 4 0V3M9 11v10M17 21V3c-2.5 1.5-3.5 4.5-3.5 7.5H17"/></svg></div>
+      <div class="lb">اطلب من مطعم</div>
+      <span class="chip">قريباً</span>
+    </div>
+    <div class="tile soon">
+      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18l-2 10H5L3 10zM8 10l3-6M16 10l-3-6"/></svg></div>
+      <div class="lb">اطلب من البقال</div>
+      <span class="chip">قريباً</span>
+    </div>
+  </div>
+  <a class="drv" href="#" data-go="driver"><b>أنا سواق</b><span>استقبل الطلبات القريبة منك</span></a>
 </div>
 <script>
-document.querySelectorAll('a.card').forEach(function (a) {
-  a.href = PAGES[a.dataset.role];
+document.querySelectorAll('a[data-go]').forEach(function (a) {
+  var role = a.dataset.go;
+  a.href = PAGES[role] + (a.dataset.type ? '?type=' + a.dataset.type : '');
   a.addEventListener('click', function () {
-    try { localStorage.setItem('tt_role', a.dataset.role); } catch (e) {}
+    try { localStorage.setItem('tt_role', role); } catch (e) {}
   });
 });
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 </script>
 </body>
-</html>
+  </html>
