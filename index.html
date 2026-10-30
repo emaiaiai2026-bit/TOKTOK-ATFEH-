@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
 <script>
-var PAGES = { rider: 'rider-v25.html', driver: 'driver-v21.html' };
+var PAGES = { rider: 'rider-v25.html', driver: 'driver-v22.html' };
 try {
   var saved = localStorage.getItem('tt_role');
   var fromApp = document.referrer.indexOf(location.origin) === 0;
@@ -20,70 +20,117 @@ try {
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#0B1F4B;color:#0B1F4B;font-family:'Cairo',system-ui,sans-serif}
+.view{flex:1;display:flex;flex-direction:column}
 .hero{padding:56px 22px 36px;color:#fff}
 .hi{font-size:14px;color:#B8C6E8}
 h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bottom:4px solid #FFB400;line-height:1.4}
 .sub{margin-top:10px;font-size:14px;color:#B8C6E8}
 .sheet{flex:1;background:#EAF1FF;border-radius:24px 24px 0 0;margin-top:-16px;padding:20px 14px 32px}
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.tile{border-radius:16px;padding:16px 6px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none}
+.tile{border-radius:16px;padding:16px 6px 14px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none;cursor:pointer}
 .tile.on{background:#fff;border:1px solid #DCE3F0;color:#0B1F4B}
 .tile.on:active{background:#F3F7FF}
 .tile.soon{background:#F7F9FD;border:1px dashed #C9D3E8;color:#5B6B8C}
-.ic{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.tile.wide{grid-column:1 / -1;flex-direction:row;justify-content:center;gap:14px;padding:14px 16px;text-align:right}
+.tile.wide .tx{display:flex;flex-direction:column}
+.tile.wide small{font-size:12px;color:#5B6B8C;font-weight:400}
+.ic{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none}
 .on .ic{background:#EAF1FF;color:#1A56DB}
+.wide .ic{background:#FFE9A8;color:#4A3200}
 .soon .ic{background:#EEF1F8;color:#8A97B4}
 .ic svg{display:block}
 .lb{font-size:15px;font-weight:700;line-height:1.4}
 .chip{font-size:11px;background:#FFE9A8;color:#4A3200;border-radius:10px;padding:1px 10px;font-weight:700}
-a.drv{display:block;margin-top:14px;background:#FFB400;color:#4A3200;border-radius:18px;padding:18px 20px;text-decoration:none}
-a.drv b{display:block;font-size:20px;font-weight:800}
-a.drv span{display:block;margin-top:2px;font-size:13px;color:#6B4A00}
-a.drv:active{opacity:.9}
-a:focus-visible{outline:3px solid #1A56DB;outline-offset:3px}
+.back{background:transparent;border:0;color:#B8C6E8;font-family:inherit;font-size:14px;padding:0 0 14px;cursor:pointer}
+.tile:focus-visible,.back:focus-visible{outline:3px solid #1A56DB;outline-offset:3px}
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0B1F4B;color:#fff;border:1px solid #3a4c7a;padding:10px 18px;border-radius:12px;font-size:14px;z-index:10;max-width:90%;text-align:center}
 </style>
 </head>
 <body>
-<div class="hero">
-  <div class="hi">أهلاً بيك</div>
-  <h1>اختار الخدمة</h1>
-  <div class="sub">حساب واحد لكل الخدمات</div>
-</div>
-<div class="sheet">
-  <div class="grid">
-    <a class="tile on" href="#" data-go="rider" data-type="tuktuk">
-      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="5" y="3" width="36" height="7" rx="3.5" fill="#1A56DB"/><rect x="8" y="8" width="31" height="23" rx="9" fill="#FFB400"/><rect x="31" y="20" width="23" height="12" rx="5" fill="#FFB400"/><rect x="13" y="13" width="17" height="11" rx="3" fill="#EAF1FF"/><circle cx="17" cy="36" r="7" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="47" cy="37" r="5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
-      <div class="lb">أطلب توكتوك</div>
-    </a>
-    <a class="tile on" href="#" data-go="rider" data-type="car">
-      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><path d="M15 19 L22 8 H42 L50 19 Z" fill="#FFB400"/><rect x="4" y="18" width="56" height="15" rx="6" fill="#FFB400"/><path d="M21 18 L25.5 10.5 H31 V18 Z M33 18 V10.5 H41 L46 18 Z" fill="#EAF1FF"/><circle cx="18" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="46" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
-      <div class="lb">أطلب عربية ملاكي</div>
-    </a>
-    <div class="tile soon">
-      <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="3" y="7" width="58" height="26" rx="7" fill="#C5CDE0"/><rect x="8" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="20" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="32" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><path d="M44 12 H55 L58 21 H44 Z" fill="#F7F9FD"/><circle cx="16" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/><circle cx="48" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/></svg></div>
-      <div class="lb">ميكروباص</div>
-      <span class="chip">قريباً</span>
-    </div>
-    <div class="tile soon">
-      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></div>
-      <div class="lb">حجز عند دكتور</div>
-      <span class="chip">قريباً</span>
-    </div>
-    <div class="tile soon">
-      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v6a2 2 0 0 0 4 0V3M9 11v10M17 21V3c-2.5 1.5-3.5 4.5-3.5 7.5H17"/></svg></div>
-      <div class="lb">اطلب من مطعم</div>
-      <span class="chip">قريباً</span>
-    </div>
-    <div class="tile soon">
-      <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18l-2 10H5L3 10zM8 10l3-6M16 10l-3-6"/></svg></div>
-      <div class="lb">اطلب من البقال</div>
-      <span class="chip">قريباً</span>
+
+<!-- الشاشة الرئيسية -->
+<div class="view" id="v-home">
+  <div class="hero">
+    <div class="hi">أهلاً بيك</div>
+    <h1>اختار الخدمة</h1>
+    <div class="sub">حساب واحد لكل الخدمات</div>
+  </div>
+  <div class="sheet">
+    <div class="grid">
+      <a class="tile on" href="#" data-go="rider" data-type="tuktuk">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="5" y="3" width="36" height="7" rx="3.5" fill="#1A56DB"/><rect x="8" y="8" width="31" height="23" rx="9" fill="#FFB400"/><rect x="31" y="20" width="23" height="12" rx="5" fill="#FFB400"/><rect x="13" y="13" width="17" height="11" rx="3" fill="#EAF1FF"/><circle cx="17" cy="36" r="7" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="47" cy="37" r="5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+        <div class="lb">أطلب توكتوك</div>
+      </a>
+      <a class="tile on" href="#" data-go="rider" data-type="car">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><path d="M15 19 L22 8 H42 L50 19 Z" fill="#FFB400"/><rect x="4" y="18" width="56" height="15" rx="6" fill="#FFB400"/><path d="M21 18 L25.5 10.5 H31 V18 Z M33 18 V10.5 H41 L46 18 Z" fill="#EAF1FF"/><circle cx="18" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="46" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+        <div class="lb">أطلب عربية ملاكي</div>
+      </a>
+      <div class="tile soon" role="button" tabindex="0" data-soon="الميكروباص">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="3" y="7" width="58" height="26" rx="7" fill="#C5CDE0"/><rect x="8" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="20" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="32" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><path d="M44 12 H55 L58 21 H44 Z" fill="#F7F9FD"/><circle cx="16" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/><circle cx="48" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/></svg></div>
+        <div class="lb">ميكروباص</div>
+        <span class="chip">قريباً</span>
+      </div>
+      <div class="tile soon" role="button" tabindex="0" data-soon="حجز الدكتور">
+        <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></div>
+        <div class="lb">حجز عند دكتور</div>
+        <span class="chip">قريباً</span>
+      </div>
+      <div class="tile soon" role="button" tabindex="0" data-soon="الطلب من المطعم">
+        <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v6a2 2 0 0 0 4 0V3M9 11v10M17 21V3c-2.5 1.5-3.5 4.5-3.5 7.5H17"/></svg></div>
+        <div class="lb">اطلب من مطعم</div>
+        <span class="chip">قريباً</span>
+      </div>
+      <div class="tile soon" role="button" tabindex="0" data-soon="الطلب من البقال">
+        <div class="ic"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10h18l-2 10H5L3 10zM8 10l3-6M16 10l-3-6"/></svg></div>
+        <div class="lb">اطلب من البقال</div>
+        <span class="chip">قريباً</span>
+      </div>
+      <a class="tile on wide" href="#" id="driversTile">
+        <div class="ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.5"/><path d="M12 14.5V21M9.6 11.2L3.4 9.6M14.4 11.2l6.2-1.6"/></svg></div>
+        <div class="tx"><div class="lb">السواقين</div><small>سجّل أو ادخل بحساب سواق</small></div>
+      </a>
     </div>
   </div>
-  <a class="drv" href="#" data-go="driver"><b>أنا سواق</b><span>استقبل الطلبات القريبة منك</span></a>
 </div>
+
+<!-- شاشة السواقين: اختيار نوع المركبة -->
+<div class="view" id="v-drivers" hidden>
+  <div class="hero">
+    <button class="back" id="backBtn" type="button">← رجوع</button>
+    <div class="hi">السواقين</div>
+    <h1>اختار نوع مركبتك</h1>
+    <div class="sub">وبعدها تسجّل أو تدخل بحسابك</div>
+  </div>
+  <div class="sheet">
+    <div class="grid">
+      <a class="tile on" href="#" data-go="driver" data-type="tuktuk">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="5" y="3" width="36" height="7" rx="3.5" fill="#1A56DB"/><rect x="8" y="8" width="31" height="23" rx="9" fill="#FFB400"/><rect x="31" y="20" width="23" height="12" rx="5" fill="#FFB400"/><rect x="13" y="13" width="17" height="11" rx="3" fill="#EAF1FF"/><circle cx="17" cy="36" r="7" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="47" cy="37" r="5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+        <div class="lb">توكتوك</div>
+      </a>
+      <a class="tile on" href="#" data-go="driver" data-type="car">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><path d="M15 19 L22 8 H42 L50 19 Z" fill="#FFB400"/><rect x="4" y="18" width="56" height="15" rx="6" fill="#FFB400"/><path d="M21 18 L25.5 10.5 H31 V18 Z M33 18 V10.5 H41 L46 18 Z" fill="#EAF1FF"/><circle cx="18" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/><circle cx="46" cy="35" r="6.5" fill="#fff" stroke="#0B1F4B" stroke-width="3"/></svg></div>
+        <div class="lb">عربية ملاكي</div>
+      </a>
+      <div class="tile soon" role="button" tabindex="0" data-soon="سواقين الميكروباص">
+        <div class="ic"><svg width="40" height="28" viewBox="0 0 64 44" aria-hidden="true"><rect x="3" y="7" width="58" height="26" rx="7" fill="#C5CDE0"/><rect x="8" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="20" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><rect x="32" y="12" width="9" height="9" rx="2" fill="#F7F9FD"/><path d="M44 12 H55 L58 21 H44 Z" fill="#F7F9FD"/><circle cx="16" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/><circle cx="48" cy="35" r="6.5" fill="#F7F9FD" stroke="#8A97B4" stroke-width="3"/></svg></div>
+        <div class="lb">ميكروباص</div>
+        <span class="chip">قريباً</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" hidden role="status"></div>
+
 <script>
+function toast(t){
+  var el = document.getElementById('toast');
+  el.textContent = t; el.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(function () { el.hidden = true; }, 2600);
+}
+
 document.querySelectorAll('a[data-go]').forEach(function (a) {
   var role = a.dataset.go;
   a.href = PAGES[role] + (a.dataset.type ? '?type=' + a.dataset.type : '');
@@ -91,6 +138,27 @@ document.querySelectorAll('a[data-go]').forEach(function (a) {
     try { localStorage.setItem('tt_role', role); } catch (e) {}
   });
 });
+
+document.querySelectorAll('[data-soon]').forEach(function (el) {
+  function say() { toast(el.dataset.soon + ' هتتفتح قريباً'); }
+  el.addEventListener('click', say);
+  el.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); say(); }
+  });
+});
+
+function show(view, push) {
+  document.getElementById('v-home').hidden = view !== 'home';
+  document.getElementById('v-drivers').hidden = view !== 'drivers';
+  window.scrollTo(0, 0);
+  if (push) history.pushState({ v: view }, '');
+}
+document.getElementById('driversTile').addEventListener('click', function (e) {
+  e.preventDefault(); show('drivers', true);
+});
+document.getElementById('backBtn').addEventListener('click', function () { history.back(); });
+window.addEventListener('popstate', function () { show('home', false); });
+
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 </script>
 </body>
