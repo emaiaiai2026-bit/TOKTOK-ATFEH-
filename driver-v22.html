@@ -131,7 +131,22 @@
     <input id="plate" class="signup hidden" placeholder="رقم المركبة (اللوحة)" aria-label="رقم المركبة">
     <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password" aria-label="الباسورد">
     <button id="authBtn" class="btn">دخول</button>
+    <button id="googleBtn" type="button" class="btn" style="margin-top:10px;background:#fff;color:var(--blue);border:1.5px solid var(--blue)">المتابعة باستخدام Google</button>
     <p id="authMsg" class="msg" role="alert"></p>
+
+    <div id="driverActivationPanel" class="hidden">
+      <h2 style="margin:8px 0">تفعيل حساب السائق</h2>
+      <p class="note">حسابك موحّد. اكتب بيانات المركبة للتقديم، والإدارة هتراجع الطلب قبل السماح باستقبال الرحلات.</p>
+      <input id="activationName" placeholder="الاسم بالكامل" autocomplete="name" aria-label="الاسم بالكامل">
+      <input id="activationPhone" placeholder="رقم الموبايل المصري" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
+      <select id="activationVehicle" aria-label="نوع المركبة" style="width:100%;height:48px;padding:0 12px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--navy);margin-bottom:10px">
+        <option value="tuktuk">توكتوك</option>
+        <option value="car">عربية ملاكي</option>
+      </select>
+      <input id="activationPlate" placeholder="رقم المركبة (اللوحة)" aria-label="رقم المركبة">
+      <button id="activationBtn" type="button" class="btn">إرسال طلب تفعيل السائق</button>
+      <p id="activationMsg" class="msg" role="status"></p>
+    </div>
     <p style="text-align:center;margin-top:14px"><a href="./?choose=1" style="color:var(--blue);font-weight:700;font-size:14px">رجوع لاختيار نوع الحساب</a></p>
   </div>
 </div>
@@ -255,6 +270,33 @@ function setTab(signup){
 $('tabLogin').onclick = () => setTab(false);
 $('tabSignup').onclick = () => setTab(true);
 
+$('googleBtn').onclick = async () => {
+  $('googleBtn').disabled = true;
+  $('authMsg').textContent = '';
+  const redirectTo = window.location.href.split('#')[0];
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if (error) {
+    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
+    $('googleBtn').disabled = false;
+  }
+};
+
+function showDriverActivation(user) {
+  ['tabLogin','tabSignup','phone','phone2','name','vehicle','plate','password','authBtn','googleBtn','authMsg'].forEach(id => $(id).classList.add('hidden'));
+  document.querySelector('.tabs').classList.add('hidden');
+  $('driverActivationPanel').classList.remove('hidden');
+  const meta = user && user.user_metadata ? user.user_metadata : {};
+  $('activationName').value = meta.full_name || meta.name || '';
+  $('activationPhone').value = meta.phone || '';
+  const requestedType = new URLSearchParams(location.search).get('type');
+  if (requestedType && [...$('activationVehicle').options].some(o => o.value === requestedType)) {
+    $('activationVehicle').value = requestedType;
+  }
+}
+
 function arabicError(e){
   const m = (e && e.message) || '';
   if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
@@ -296,6 +338,28 @@ $('authBtn').onclick = async () => {
   start();
 };
 
+$('activationBtn').onclick = async () => {
+  const name = $('activationName').value.trim();
+  const phone = normalizePhone($('activationPhone').value);
+  const plate = $('activationPlate').value.trim();
+  const vehicle = $('activationVehicle').value;
+  $('activationMsg').textContent = '';
+  if (!name) { $('activationMsg').textContent = 'اكتب الاسم بالكامل'; return; }
+  if (!phone) { $('activationMsg').textContent = 'اكتب رقم موبايل مصري صحيح'; return; }
+  if (!plate) { $('activationMsg').textContent = 'اكتب رقم المركبة'; return; }
+  $('activationBtn').disabled = true;
+  const { error } = await sb.rpc('request_driver_activation', {
+    p_vehicle_type: vehicle, p_plate: plate, p_name: name, p_phone: phone
+  });
+  $('activationBtn').disabled = false;
+  if (error) {
+    $('activationMsg').textContent = 'مقدرناش نبعت الطلب: ' + error.message;
+    return;
+  }
+  $('activationMsg').textContent = 'تم إرسال طلبك. هنراجع البيانات ونفعّل الحساب بعد الموافقة.';
+  await start();
+};
+
 $('logoutBtn').onclick = async () => {
   if (online && !currentRideId) await setOnline(false);
   await sb.auth.signOut(); location.reload();
@@ -315,10 +379,28 @@ async function start(){
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   me = user;
-  const { data: prof } = await sb.from('profiles').select('role,vehicle_type').eq('id', me.id).maybeSingle();
-  if (prof && prof.role !== 'driver') {
-    toast('الحساب ده مش حساب سواق');
+  const { data: prof, error: profileError } = await sb.from('profiles')
+    .select('role,is_driver,is_approved,is_blocked,vehicle_type')
+    .eq('id', me.id).maybeSingle();
+  if (profileError || !prof) {
+    $('authMsg').textContent = 'مقدرناش نقرأ بيانات الحساب. جرّب تحديث الصفحة.';
+    return;
+  }
+  if (prof.role === 'admin') {
+    toast('حساب الإدارة لا يستخدم شاشة السائقين');
     await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
+  }
+  if (prof.is_blocked) {
+    $('authMsg').textContent = 'الحساب موقوف. تواصل مع الإدارة.';
+    return;
+  }
+  if (prof.role === 'customer' && !prof.is_driver) {
+    showDriverActivation(user);
+    return;
+  }
+  if (prof.role !== 'driver' && !prof.is_driver) {
+    $('authMsg').textContent = 'الحساب غير مؤهل لوضع السائق.';
+    return;
   }
   showVehicleName(prof && prof.vehicle_type);
   $('authScreen').classList.add('hidden');
