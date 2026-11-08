@@ -291,7 +291,8 @@ function showDriverActivation(user) {
   const meta = user && user.user_metadata ? user.user_metadata : {};
   $('activationName').value = meta.full_name || meta.name || '';
   $('activationPhone').value = meta.phone || '';
-  const requestedType = new URLSearchParams(location.search).get('type');
+  $('activationPlate').value = meta.plate_number || '';
+  const requestedType = meta.vehicle_type || new URLSearchParams(location.search).get('type');
   if (requestedType && [...$('activationVehicle').options].some(o => o.value === requestedType)) {
     $('activationVehicle').value = requestedType;
   }
