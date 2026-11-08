@@ -394,12 +394,12 @@ async function start(){
     $('authMsg').textContent = 'الحساب موقوف. تواصل مع الإدارة.';
     return;
   }
-  if (prof.role === 'customer' && !prof.is_driver) {
+  if (!prof.is_driver) {
     showDriverActivation(user);
     return;
   }
-  if (prof.role !== 'driver' && !prof.is_driver) {
-    $('authMsg').textContent = 'الحساب غير مؤهل لوضع السائق.';
+  if (prof.role !== 'customer' && prof.role !== 'driver') {
+    $('authMsg').textContent = 'نوع الحساب غير مؤهل لوضع السائق.';
     return;
   }
   showVehicleName(prof && prof.vehicle_type);
