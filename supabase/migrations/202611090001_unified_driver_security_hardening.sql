@@ -165,3 +165,24 @@ $function$;
 revoke all on function public.become_driver(text, text) from public;
 revoke all on function public.become_driver(text, text) from anon;
 revoke all on function public.become_driver(text, text) from authenticated;
+
+
+-- Restrict client RPC execution to signed-in users.
+-- SECURITY DEFINER does not make a function safe to expose to anon clients.
+revoke all on function public.is_driver() from public, anon;
+grant execute on function public.is_driver() to authenticated;
+
+revoke all on function public.admin_set_blocked(uuid, boolean) from public, anon;
+grant execute on function public.admin_set_blocked(uuid, boolean) to authenticated;
+
+revoke all on function public.accept_ride(uuid) from public, anon;
+grant execute on function public.accept_ride(uuid) to authenticated;
+
+revoke all on function public.nearby_requests() from public, anon;
+grant execute on function public.nearby_requests() to authenticated;
+
+revoke all on function public.update_driver_location(double precision, double precision, boolean) from public, anon;
+grant execute on function public.update_driver_location(double precision, double precision, boolean) to authenticated;
+
+revoke all on function public.request_driver_activation(text, text, text, text) from public, anon;
+grant execute on function public.request_driver_activation(text, text, text, text) to authenticated;
