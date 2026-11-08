@@ -250,7 +250,7 @@ let currentRideId = null, fittedRideId = null, pollTimer = null, polling = false
 let isSignup = false, seenReqs = new Set(), audioCtx = null, wakeLock = null;
 let following = true, lastFollow = null;
 const customerCache = {};
-let approved = true, canWork = true;
+let approved = false, blocked = false, canWork = true;
 
 function toast(text){
   const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
@@ -486,7 +486,7 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function setOnline(on, auto){
-  if (on && approved === false) { if (!auto) toast('حسابك لسه مستني الموافقة'); return; }
+  if (on && (approved !== true || blocked)) { if (!auto) toast(blocked ? 'الحساب موقوف من الإدارة' : 'حسابك لسه مستني الموافقة'); return; }
   if (on && !canWork) { if (!auto) toast('رصيدك خلص. اشحن البرنامج الأول'); return; }
   online = on;
   try { localStorage.setItem('tt_online', on ? '1' : '0'); } catch (e) {}
@@ -742,7 +742,7 @@ async function resumeIfWasOnline(){
   try { was = localStorage.getItem('tt_online') === '1'; } catch (e) {}
   if (!was) return;
   await checkApproval();
-  if (approved !== false) setOnline(true, true);
+  if (approved === true && !blocked) setOnline(true, true);
 }
 
 /* ---------- رقم الدعم (بيتغيّر من الإدارة) ---------- */
@@ -757,13 +757,25 @@ async function loadSupport(){
 
 /* ---------- الموافقة والرصيد ---------- */
 async function checkApproval(){
-  const { data } = await sb.from('profiles').select('is_approved').eq('id', me.id).maybeSingle();
-  if (!data) return;
-  approved = !!data.is_approved;
-  if (!approved && online && !currentRideId) {
+  const { data, error } = await sb.from('profiles')
+    .select('is_approved,is_blocked').eq('id', me.id).maybeSingle();
+  if (error || !data) {
+    approved = false;
+    if (online && !currentRideId) {
+      online = false; stopTracking(); clearReqMarkers();
+      try { localStorage.setItem('tt_online', '0'); } catch (e) {}
+    }
+    return;
+  }
+  blocked = !!data.is_blocked;
+  approved = !!data.is_approved && !blocked;
+  if ((!approved || blocked) && online && !currentRideId) {
     online = false; stopTracking(); clearReqMarkers();
     try { localStorage.setItem('tt_online', '0'); } catch (e) {}
-    toast('حسابك اتوقف من الإدارة');
+    if (myPos) await sb.rpc('update_driver_location', {
+      p_lat: myPos.lat, p_lng: myPos.lng, p_available: false
+    });
+    toast(blocked ? 'الحساب موقوف من الإدارة' : 'حسابك اتوقف من الإدارة');
   }
 }
 
