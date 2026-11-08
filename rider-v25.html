@@ -131,6 +131,7 @@
     <input id="name" class="signup hidden" placeholder="الاسم" autocomplete="name" aria-label="الاسم">
     <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password" aria-label="الباسورد">
     <button id="authBtn" class="btn">دخول</button>
+    <button id="googleBtn" type="button" class="btn" style="margin-top:10px;background:#fff;color:var(--blue);border:1.5px solid var(--blue)">المتابعة باستخدام Google</button>
     <p id="authMsg" class="msg" role="alert"></p>
     <p style="text-align:center;margin-top:14px"><a href="./?choose=1" style="color:var(--blue);font-weight:700;font-size:14px">رجوع لاختيار نوع الحساب</a></p>
   </div>
@@ -250,6 +251,20 @@ function setTab(signup){
 $('tabLogin').onclick = () => setTab(false);
 $('tabSignup').onclick = () => setTab(true);
 
+$('googleBtn').onclick = async () => {
+  $('googleBtn').disabled = true;
+  $('authMsg').textContent = '';
+  const redirectTo = window.location.href.split('#')[0];
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if (error) {
+    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
+    $('googleBtn').disabled = false;
+  }
+};
+
 function arabicError(e){
   const m = (e && e.message) || '';
   if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
@@ -297,9 +312,17 @@ async function start(){
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   me = user;
-  const { data: prof } = await sb.from('profiles').select('role').eq('id', me.id).maybeSingle();
-  if (prof && prof.role !== 'customer') {
-    toast('الحساب ده مش حساب زبون');
+  const { data: prof, error: profileError } = await sb.from('profiles').select('role,is_driver').eq('id', me.id).maybeSingle();
+  if (profileError || !prof) {
+    $('authMsg').textContent = 'مقدرناش نقرأ بيانات الحساب. جرّب تحديث الصفحة.';
+    return;
+  }
+  if (prof.role === 'admin') {
+    toast('حساب الإدارة لا يستخدم شاشة الخدمات');
+    await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
+  }
+  if (prof.role !== 'customer' && prof.role !== 'driver') {
+    toast('نوع الحساب غير مدعوم');
     await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
   }
   $('authScreen').classList.add('hidden');
