@@ -97,6 +97,44 @@ begin
 end
 $function$;
 
+-- The nearby-requests RPC is SECURITY DEFINER, so enforce approval and block
+-- status here as well; it must not rely only on the driver's UI availability.
+create or replace function public.nearby_requests()
+returns table (
+  ride_id uuid,
+  pickup_text text,
+  drop_text text,
+  ride_distance_km numeric,
+  price numeric,
+  pickup_distance_km double precision,
+  pickup_lat double precision,
+  pickup_lng double precision
+)
+language sql
+stable
+security definer
+set search_path to 'public'
+as $function$
+  select r.id, r.pickup_text, r.drop_text, r.distance_km, r.price,
+         haversine_km(p.lat, p.lng, r.pickup_lat, r.pickup_lng) as pd,
+         r.pickup_lat, r.pickup_lng
+  from rides r, profiles p, settings s
+  where p.id = auth.uid()
+    and p.is_driver = true
+    and p.is_approved = true
+    and p.is_blocked = false
+    and p.is_available = true
+    and p.lat is not null
+    and r.status = 'requested'
+    and s.id = 1
+    and r.customer_id <> p.id
+    and r.vehicle_type = p.vehicle_type
+    and not (p.id = any(r.rejected_drivers))
+    and r.created_at > now() - make_interval(mins => s.request_timeout_min::int)
+    and haversine_km(p.lat, p.lng, r.pickup_lat, r.pickup_lng) <= s.search_radius_km
+  order by pd
+$function$;
+
 -- A blocked driver can no longer publish availability or appear online.
 create or replace function public.update_driver_location(
   p_lat double precision,
