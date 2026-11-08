@@ -1,6 +1,29 @@
 -- Unified account: request driver activation without changing account role.
 -- Existing phone accounts and the legacy become_driver() RPC remain untouched.
 
+-- Keep every new account a customer by default; only copy safe display fields.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path to 'public'
+as $function$
+begin
+  insert into public.profiles (id, role, name, phone)
+  values (
+    new.id,
+    'customer',
+    coalesce(
+      nullif(trim(new.raw_user_meta_data->>'name'), ''),
+      nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
+      nullif(trim(new.raw_user_meta_data->>'display_name'), '')
+    ),
+    nullif(trim(new.raw_user_meta_data->>'phone'), '')
+  );
+  return new;
+end
+$function$;
+
 create or replace function public.request_driver_activation(
   p_vehicle_type text,
   p_plate text,
