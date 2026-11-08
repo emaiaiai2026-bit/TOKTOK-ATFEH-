@@ -36,7 +36,7 @@ begin
   set is_blocked = p_blocked,
       is_available = case when p_blocked then false else is_available end
   where id = p_user
-    and role <> 'admin';
+    and role is distinct from 'admin';
 end
 $function$;
 
