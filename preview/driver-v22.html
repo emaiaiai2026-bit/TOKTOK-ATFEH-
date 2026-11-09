@@ -116,24 +116,7 @@
     <p>استقبل الطلبات القريبة منك</p>
   </div>
   <div class="authsheet">
-    <div class="tabs">
-      <button id="tabLogin" class="on">دخول</button>
-      <button id="tabSignup">سواق جديد</button>
-    </div>
-    <input id="phone" placeholder="رقم الموبايل (01xxxxxxxxx)" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
-    <input id="phone2" class="signup hidden" placeholder="اكتب الرقم تاني للتأكيد" inputmode="tel" aria-label="تأكيد رقم الموبايل">
-    <p class="signup hidden note">اكتب رقمك الحقيقي، لأن الإدارة هتتصل بيك عليه قبل ما تفعّل حسابك.</p>
-    <input id="name" class="signup hidden" placeholder="الاسم" autocomplete="name" aria-label="الاسم">
-    <select id="vehicle" class="signup hidden" aria-label="نوع المركبة">
-      <option value="tuktuk">توكتوك</option>
-      <option value="car">عربية ملاكي</option>
-    </select>
-    <input id="plate" class="signup hidden" placeholder="رقم المركبة (اللوحة)" aria-label="رقم المركبة">
-    <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password" aria-label="الباسورد">
-    <button id="authBtn" class="btn">دخول</button>
-    <button id="googleBtn" type="button" class="btn" style="margin-top:10px;background:#fff;color:var(--blue);border:1.5px solid var(--blue)">المتابعة باستخدام Google</button>
     <p id="authMsg" class="msg" role="alert"></p>
-
     <div id="driverActivationPanel" class="hidden">
       <h2 style="margin:8px 0">تفعيل حساب السائق</h2>
       <p class="note">حسابك موحّد. اكتب بيانات المركبة للتقديم، والإدارة هتراجع الطلب قبل السماح باستقبال الرحلات.</p>
@@ -257,36 +240,9 @@ function toast(text){
   clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.add('hidden'), 3500);
 }
 
-/* ---------- الدخول والتسجيل ---------- */
-function setTab(signup){
-  isSignup = signup;
-  $('tabLogin').classList.toggle('on', !signup);
-  $('tabSignup').classList.toggle('on', signup);
-  document.querySelectorAll('.signup').forEach(el => el.classList.toggle('hidden', !signup));
-  $('authBtn').textContent = signup ? 'إنشاء حساب سواق' : 'دخول';
-  $('password').autocomplete = signup ? 'new-password' : 'current-password';
-  $('authMsg').textContent = '';
-}
-$('tabLogin').onclick = () => setTab(false);
-$('tabSignup').onclick = () => setTab(true);
-
-$('googleBtn').onclick = async () => {
-  $('googleBtn').disabled = true;
-  $('authMsg').textContent = '';
-  const redirectTo = window.location.href.split('#')[0];
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo }
-  });
-  if (error) {
-    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
-    $('googleBtn').disabled = false;
-  }
-};
-
+/* ---------- حساب Google الموحد وتفعيل وضع السائق ---------- */
 function showDriverActivation(user) {
-  ['tabLogin','tabSignup','phone','phone2','name','vehicle','plate','password','authBtn','googleBtn','authMsg'].forEach(id => $(id).classList.add('hidden'));
-  document.querySelector('.tabs').classList.add('hidden');
+  $('authScreen').classList.remove('hidden');
   $('driverActivationPanel').classList.remove('hidden');
   const meta = user && user.user_metadata ? user.user_metadata : {};
   $('activationName').value = meta.full_name || meta.name || '';
@@ -297,47 +253,6 @@ function showDriverActivation(user) {
     $('activationVehicle').value = requestedType;
   }
 }
-
-function arabicError(e){
-  const m = (e && e.message) || '';
-  if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
-  if (m.includes('already registered')) return 'الرقم ده مسجّل قبل كده، جرّب تدخل';
-  if (m.includes('Password should')) return 'الباسورد لازم يكون 6 حروف على الأقل';
-  if (m.includes('Email not confirmed')) return 'تأكيد الإيميل لسه مفعّل في إعدادات Supabase';
-  return m ? 'مشكلة: ' + m : 'حصل خطأ، حاول تاني';
-}
-
-function normalizePhone(raw){
-  let p = String(raw || '').replace(/\D/g, '');
-  if (p.startsWith('0020')) p = '0' + p.slice(4);
-  else if (p.startsWith('20') && p.length === 12) p = '0' + p.slice(2);
-  else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
-  return /^01[0125]\d{8}$/.test(p) ? p : null;
-}
-
-$('authBtn').onclick = async () => {
-  const password = $('password').value;
-  const name = $('name').value.trim();
-  const plate = $('plate').value.trim();
-  const phone = normalizePhone($('phone').value);
-  $('authMsg').textContent = '';
-  if (!phone) { $('authMsg').textContent = 'اكتب رقم موبايل مصري صحيح (11 رقم)'; return; }
-  if (isSignup && normalizePhone($('phone2').value) !== phone) { $('authMsg').textContent = 'الرقمين مش زي بعض، اكتبهم تاني'; return; }
-  if (!password) { $('authMsg').textContent = 'اكتب الباسورد'; return; }
-  if (isSignup && (!name || !plate)) { $('authMsg').textContent = 'اكتب اسمك ورقم المركبة'; return; }
-  const email = phone + '@' + EMAIL_DOMAIN;
-  $('authBtn').disabled = true;
-  let res;
-  if (isSignup) {
-    res = await sb.auth.signUp({ email, password, options: { data: { role: 'driver', name, phone, plate_number: plate, vehicle_type: $('vehicle').value } } });
-  } else {
-    res = await sb.auth.signInWithPassword({ email, password });
-  }
-  $('authBtn').disabled = false;
-  if (res.error) { $('authMsg').textContent = arabicError(res.error); return; }
-  if (!res.data.session) { $('authMsg').textContent = 'تم إنشاء الحساب. سجّل دخول دلوقتي.'; setTab(false); return; }
-  start();
-};
 
 $('activationBtn').onclick = async () => {
   const name = $('activationName').value.trim();
@@ -858,19 +773,12 @@ async function setupPush(ask){
 }
 $('pushBtn').onclick = () => setupPush(true).then(ok => { if (ok) toast('الإشعارات اتفعّلت'); });
 
-/* ---------- نوع المركبة جاي من الصفحة الرئيسية ---------- */
-(function () {
-  const t = new URLSearchParams(location.search).get('type');
-  const sel = $('vehicle');
-  if (t && sel && [...sel.options].some(o => o.value === t)) sel.value = t;
-})();
-
 /* ---------- تشغيل ---------- */
 // All authentication happens once on the app home screen. Service pages never show legacy phone/password login.
 $('authScreen').classList.add('hidden');
 sb.auth.getSession().then(({ data, error }) => {
   if (error || !data.session) {
-    location.replace('https://emaiaiai2026-bit.github.io/TOKTOK-ATFEH-/preview/');
+    location.replace('./');
     return;
   }
   start();
