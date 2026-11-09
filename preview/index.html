@@ -168,7 +168,7 @@ function toast(t){
 
 document.querySelectorAll('a[data-go]').forEach(function (a) {
   var role = a.dataset.go;
-  a.href = PAGES[role] + '?v=2026110903' + (a.dataset.type ? '&type=' + encodeURIComponent(a.dataset.type) : '');
+  a.href = PAGES[role] + '?v=2026110904' + (a.dataset.type ? '&type=' + encodeURIComponent(a.dataset.type) : '');
   a.addEventListener('click', function () {
     try { localStorage.setItem('tt_role', role); } catch (e) {}
   });
