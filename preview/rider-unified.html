@@ -111,9 +111,44 @@
   .pin.poi::after{content:'🕌';width:auto;height:auto;background:none;border-radius:0;font-size:22px;line-height:1}
 
   #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
+
+  #bootError{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;padding:24px;background:#EAF1FF;font-family:'Cairo',system-ui,sans-serif;color:#0B1F4B}
+  #bootError .box{width:100%;max-width:440px;background:#fff;border:1px solid #DCE3F0;border-radius:18px;padding:22px;text-align:center;box-shadow:0 8px 30px rgba(11,31,75,.12)}
+  #bootError h2{margin:0 0 10px;font-size:21px}
+  #bootError p{margin:0 0 16px;line-height:1.8;font-size:15px}
+  #bootError button{background:#1A56DB;color:#fff;border-radius:12px;padding:12px 22px;font-weight:700}
+
 </style>
 </head>
 <body>
+
+<div id="bootError" role="alert" aria-live="assertive">
+  <div class="box">
+    <h2>تعذر تشغيل صفحة الطلب</h2>
+    <p id="bootErrorMessage">حصل خطأ أثناء تحميل الصفحة. اضغط إعادة المحاولة.</p>
+    <button type="button" onclick="location.reload()">إعادة المحاولة</button>
+  </div>
+</div>
+<script>
+(function(){
+  function showBootError(message){
+    var panel = document.getElementById('bootError');
+    var label = document.getElementById('bootErrorMessage');
+    if (!panel || !label) return;
+    label.textContent = message || 'حصل خطأ أثناء تشغيل الصفحة. تأكد من اتصال الإنترنت ثم أعد المحاولة.';
+    panel.style.display = 'flex';
+  }
+  window.__showBootError = showBootError;
+  window.addEventListener('error', function(event){
+    if (event.target && event.target !== window && !/script/i.test(event.target.tagName || '')) return;
+    showBootError('حصل خطأ أثناء تشغيل الصفحة. قد يكون الاتصال بأحد ملفات التشغيل غير متاح. أعد المحاولة بعد التأكد من الإنترنت.');
+  }, true);
+  window.addEventListener('unhandledrejection', function(){
+    showBootError('تعذر تحميل بيانات الحساب أو تشغيل الصفحة. تأكد من اتصال الإنترنت ثم اضغط إعادة المحاولة.');
+  });
+})();
+</script>
+
 
 <!-- ===== التطبيق ===== -->
 <div id="appScreen" class="hidden">
@@ -903,8 +938,17 @@ async function loadVehicleTypes(){
 
 /* ---------- تشغيل ---------- */
 sb.auth.getSession().then(({ data }) => {
-  if (data.session) start();
-  else location.replace('./');
+  if (data.session) {
+    start().catch(error => {
+      console.error('Rider page startup failed:', error);
+      window.__showBootError('تعذر تجهيز صفحة الطلب. قد تكون بيانات الحساب لم تُحمّل بشكل صحيح. أعد المحاولة، وإذا تكررت المشكلة تواصل مع الدعم.');
+    });
+  } else {
+    location.replace('./');
+  }
+}).catch(error => {
+  console.error('Session loading failed:', error);
+  window.__showBootError('تعذر التحقق من تسجيل الدخول. تأكد من اتصال الإنترنت ثم اضغط إعادة المحاولة.');
 });
 </script>
 </body>
