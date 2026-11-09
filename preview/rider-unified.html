@@ -60,6 +60,10 @@
   .vt.off{opacity:.55}
   .vt small{font-size:11px;color:var(--muted);font-weight:600}
   .grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 12px}
+  #sheet.is-collapsed{max-height:76px;overflow:hidden;padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  #sheetToggle{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:42px;margin:0 0 8px;padding:4px 10px;background:transparent;color:var(--blue);font:700 13px inherit;border:0;cursor:pointer;touch-action:manipulation}
+  #sheet.is-collapsed #sheetToggle{margin:0}
+  #sheet.is-collapsed #bookPanel,#sheet.is-collapsed #ridePanel{display:none!important}
 
   .loc{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1.5px solid transparent;border-radius:14px;cursor:pointer}
   .loc.on{border-color:var(--blue);background:var(--tint)}
@@ -168,7 +172,7 @@
   </div>
 
   <div id="sheet">
-    <div class="grab"></div>
+    <button class="grab" id="sheetToggle" type="button" aria-expanded="true" aria-controls="bookPanel ridePanel"><span aria-hidden="true">⌄</span><span id="sheetToggleText">اضغط لتكبير مساحة الخريطة</span></button>
 
     <div id="bookPanel">
     <div class="vtypes" id="vtypes">
@@ -252,6 +256,17 @@ let settings = { base_fare: 5, per_km: 4, detour_factor: 1.3 };
 
 document.title = APP_NAME;
 $('appName').textContent = APP_NAME;
+
+function toggleMapSheet(){
+  const sheet = $('sheet');
+  const collapsed = sheet.classList.toggle('is-collapsed');
+  $('sheetToggle').setAttribute('aria-expanded', String(!collapsed));
+  $('sheetToggle').innerHTML = collapsed
+    ? '<span aria-hidden="true">⌃</span><span id="sheetToggleText">اضغط لفتح لوحة الطلب</span>'
+    : '<span aria-hidden="true">⌄</span><span id="sheetToggleText">اضغط لتكبير مساحة الخريطة</span>';
+  setTimeout(() => { if (map) map.invalidateSize({ pan: false }); }, 260);
+}
+$('sheetToggle').addEventListener('click', toggleMapSheet);
 
 function toast(text){
   const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
