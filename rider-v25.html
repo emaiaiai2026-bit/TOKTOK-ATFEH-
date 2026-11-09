@@ -225,7 +225,7 @@
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const APP_NAME = 'خدماتنا';
-const DEFAULT_CENTER = [29.4075, 31.2525];   // مركز أطفيح كاختيار احتياطي فقط عند تعذر GPS
+const DEFAULT_CENTER = [29.402366, 31.275707]; // كفر حلاوة: مركز اختبار احتياطي فقط عند تعذر GPS
 const EMAIL_DOMAIN = 'tuktuk.app';           // إيميل داخلي بيتبني من رقم الموبايل
 const AVG_SPEED_KMH = 20;                    // لتقدير وقت وصول السواق
 /* ================================================ */
@@ -613,8 +613,8 @@ async function searchDestination(){
   $('destinationResults').classList.remove('hidden');
   $('destinationResults').textContent = 'بندور على المكان...';
   try {
-    const searchCenter = pickup || map.getCenter();
-    const locationKey = searchCenter.lat.toFixed(2) + ',' + searchCenter.lng.toFixed(2);
+    const searchCenter = map.getCenter(); // البحث يتبع المنطقة الظاهرة على الخريطة، لا موقع GPS القديم
+    const locationKey = searchCenter.lat.toFixed(3) + ',' + searchCenter.lng.toFixed(3);
     const cacheKey = (wantsMosque ? 'mosque:' : '') + key + '|' + locationKey;
     let results = destinationCache[cacheKey];
     if (!results) {
@@ -623,30 +623,52 @@ async function searchDestination(){
       lastGeocodeAt = Date.now();
 
       if (wantsMosque) {
-        // عند البحث عن مسجد: نطلب أماكن العبادة نفسها، لا الشوارع التي تحمل اسم المسجد.
-        const params = new URLSearchParams({
-          q: query,
-          format: 'json',
-          lang: 'ar',
-          limit: '10',
-          countrycode: 'EG',
-          lat: String(searchCenter.lat),
-          lon: String(searchCenter.lng),
-          zoom: '16',
-          location_bias_scale: '0.2',
-          osm_tag: 'amenity:place_of_worship'
+        // البحث عن المسجد كمعلم مسجل فقط؛ لا نعرض شارعاً يحمل اسم المسجد.
+        const cleanQuery = query.trim().replace(/[^\p{L}\p{N}\s]/gu, '');
+        const pattern = cleanQuery.split(/\s+/).filter(Boolean).join('.*');
+        const lat = Number(searchCenter.lat.toFixed(5));
+        const lon = Number(searchCenter.lng.toFixed(5));
+        const radius = 12000;
+        const selectors = [];
+        ['name', 'alt_name', 'official_name'].forEach(tag => {
+          selectors.push(`nwr(around:${radius},${lat},${lon})["amenity"="place_of_worship"]["${tag}"~"${pattern}",i];`);
+          selectors.push(`nwr(around:${radius},${lat},${lon})["building"="mosque"]["${tag}"~"${pattern}",i];`);
         });
-        const response = await fetch('https://photon.komoot.io/api/?' + params.toString());
-        if (!response.ok) throw new Error('place search unavailable');
-        const data = await response.json();
-        results = (data.features || []).map(feature => {
-          const p = feature.properties || {};
-          const coords = feature.geometry && feature.geometry.coordinates;
-          if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) return null;
-          const title = p.name || query;
-          const address = [p.name, p.street, p.district, p.city, p.county, p.state, p.country].filter(Boolean).filter((v, n, a) => a.indexOf(v) === n).join('، ');
+        const overpassQuery = '[out:json][timeout:25];(' + selectors.join('') + ');out center tags;';
+        const endpoints = [
+          'https://overpass-api.de/api/interpreter',
+          'https://overpass.kumi.systems/api/interpreter'
+        ];
+        let payload = null, lastError = null;
+        for (const endpoint of endpoints) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 28000);
+          try {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+              body: 'data=' + encodeURIComponent(overpassQuery),
+              signal: controller.signal
+            });
+            if (!response.ok) throw new Error('overpass unavailable');
+            payload = await response.json();
+            break;
+          } catch (error) { lastError = error; }
+          finally { clearTimeout(timeout); }
+        }
+        if (!payload) throw (lastError || new Error('place search unavailable'));
+        results = (payload.elements || []).map(element => {
+          const tags = element.tags || {};
+          const point = element.type === 'node'
+            ? { lat: element.lat, lon: element.lon }
+            : element.center;
+          if (!point || !Number.isFinite(Number(point.lat)) || !Number.isFinite(Number(point.lon))) return null;
+          if (tags.amenity !== 'place_of_worship' && tags.building !== 'mosque') return null;
+          const title = tags.name || tags.official_name || tags.alt_name || query;
+          const address = [title, tags['addr:suburb'], tags['addr:city'], tags['addr:state']]
+            .filter(Boolean).filter((value, n, all) => all.indexOf(value) === n).join('، ');
           return {
-            lat: coords[1], lon: coords[0], name: title,
+            lat: Number(point.lat), lon: Number(point.lon), name: title,
             display_name: address || title, isPoi: true
           };
         }).filter(Boolean);
