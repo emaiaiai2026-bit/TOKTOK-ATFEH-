@@ -40,12 +40,29 @@ h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bot
 .back{background:transparent;border:0;color:#B8C6E8;font-family:inherit;font-size:14px;padding:0 0 14px;cursor:pointer}
 .tile:focus-visible,.back:focus-visible{outline:3px solid #1A56DB;outline-offset:3px}
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#0B1F4B;color:#fff;border:1px solid #3a4c7a;padding:10px 18px;border-radius:12px;font-size:14px;z-index:10;max-width:90%;text-align:center}
+.auth-wrap{min-height:100vh;display:flex;flex-direction:column}.auth-hero{padding:72px 24px 38px;color:#fff}.auth-card{flex:1;background:#fff;border-radius:26px 26px 0 0;padding:34px 22px}.auth-title{font-size:27px;font-weight:800;margin:0 0 8px}.auth-sub{color:#8a97b4;margin:0 0 28px}.google-btn{width:100%;min-height:60px;border:1.5px solid #1A56DB;border-radius:14px;background:#fff;color:#1A56DB;font-family:inherit;font-size:18px;font-weight:800;cursor:pointer}.google-btn:disabled{opacity:.6}.auth-note{font-size:13px;color:#8a97b4;text-align:center;margin-top:18px}.auth-error{color:#b42318;font-size:13px;margin-top:14px;min-height:20px}
 </style>
 </head>
 <body>
 
+<!-- شاشة الدخول الأولى -->
+<div class="auth-wrap" id="v-auth">
+  <div class="auth-hero">
+    <div class="hi">أهلاً بيك في خدماتنا</div>
+    <h1>حساب واحد لكل الخدمات</h1>
+    <div class="sub">سجّل مرة واحدة واطلب أي خدمة</div>
+  </div>
+  <div class="auth-card">
+    <h2 class="auth-title">ابدأ باستخدام حساب Google</h2>
+    <p class="auth-sub">بعد التسجيل هتقدر تستخدم كل خدمات التطبيق بنفس الحساب.</p>
+    <button class="google-btn" id="googleStartBtn" type="button">المتابعة باستخدام Google</button>
+    <div class="auth-error" id="authError" role="alert"></div>
+    <p class="auth-note">تسجيل آمن، ومش هتحتاج تعمل حساب جديد لكل خدمة.</p>
+  </div>
+</div>
+
 <!-- الشاشة الرئيسية -->
-<div class="view" id="v-home">
+<div class="view" id="v-home" hidden>
   <div class="hero">
     <div class="hi">أهلاً بيك</div>
     <h1>اختار الخدمة</h1>
@@ -118,7 +135,31 @@ h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bot
 
 <div id="toast" hidden role="status"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL = "https://nhxenquczoaxytxskdsa.supabase.co";
+const SUPABASE_KEY = "sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const authView = document.getElementById("v-auth");
+const homeView = document.getElementById("v-home");
+const driversView = document.getElementById("v-drivers");
+function showAuthError(message) { document.getElementById("authError").textContent = message || ""; }
+function showHomeAfterLogin() { authView.hidden = true; homeView.hidden = false; driversView.hidden = true; }
+function showLoginBeforeServices() { authView.hidden = false; homeView.hidden = true; driversView.hidden = true; }
+document.getElementById("googleStartBtn").addEventListener("click", async function () {
+  const button = this; button.disabled = true; showAuthError("");
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await sb.auth.signInWithOAuth({ provider: "google", options: { redirectTo } });
+  if (error) { showAuthError("تعذر بدء تسجيل Google: " + error.message); button.disabled = false; }
+});
+sb.auth.onAuthStateChange(function (event, session) {
+  if (session) showHomeAfterLogin(); else showLoginBeforeServices();
+});
+sb.auth.getSession().then(function ({ data, error }) {
+  if (error) { showAuthError("تعذر التحقق من تسجيل الدخول. حاول تحديث الصفحة."); showLoginBeforeServices(); return; }
+  if (data.session) showHomeAfterLogin(); else showLoginBeforeServices();
+});
+
 function toast(t){
   var el = document.getElementById('toast');
   el.textContent = t; el.hidden = false;
