@@ -126,29 +126,6 @@
 </head>
 <body>
 
-<!-- ===== الدخول ===== -->
-<div id="authScreen">
-  <div class="hero">
-    <h1 id="brandName">خدماتنا</h1>
-    <p>اطلب خدمتك لحد باب بيتك</p>
-  </div>
-  <div class="authsheet">
-    <div class="tabs">
-      <button id="tabLogin" class="on">دخول</button>
-      <button id="tabSignup">حساب جديد</button>
-    </div>
-    <input id="phone" placeholder="رقم الموبايل (01xxxxxxxxx)" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
-    <input id="phone2" class="signup hidden" placeholder="اكتب الرقم تاني للتأكيد" inputmode="tel" aria-label="تأكيد رقم الموبايل">
-    <p class="signup hidden note">اكتب رقمك الحقيقي، لأن السواق هيتصل بيك عليه.</p>
-    <input id="name" class="signup hidden" placeholder="الاسم" autocomplete="name" aria-label="الاسم">
-    <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password" aria-label="الباسورد">
-    <button id="authBtn" class="btn">دخول</button>
-    <button id="googleBtn" type="button" class="btn" style="margin-top:10px;background:#fff;color:var(--blue);border:1.5px solid var(--blue)">المتابعة باستخدام Google</button>
-    <p id="authMsg" class="msg" role="alert"></p>
-    <p style="text-align:center;margin-top:14px"><a href="./?choose=1" style="color:var(--blue);font-weight:700;font-size:14px">رجوع لاختيار نوع الحساب</a></p>
-  </div>
-</div>
-
 <!-- ===== التطبيق ===== -->
 <div id="appScreen" class="hidden">
   <div id="map"></div>
@@ -257,74 +234,7 @@ function toast(text){
   clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.add('hidden'), 3500);
 }
 
-/* ---------- الدخول والتسجيل ---------- */
-function setTab(signup){
-  isSignup = signup;
-  $('tabLogin').classList.toggle('on', !signup);
-  $('tabSignup').classList.toggle('on', signup);
-  document.querySelectorAll('.signup').forEach(el => el.classList.toggle('hidden', !signup));
-  $('authBtn').textContent = signup ? 'إنشاء الحساب' : 'دخول';
-  $('password').autocomplete = signup ? 'new-password' : 'current-password';
-  $('authMsg').textContent = '';
-}
-$('tabLogin').onclick = () => setTab(false);
-$('tabSignup').onclick = () => setTab(true);
-
-$('googleBtn').onclick = async () => {
-  $('googleBtn').disabled = true;
-  $('authMsg').textContent = '';
-  const redirectTo = window.location.href.split('#')[0];
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo }
-  });
-  if (error) {
-    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
-    $('googleBtn').disabled = false;
-  }
-};
-
-function arabicError(e){
-  const m = (e && e.message) || '';
-  if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
-  if (m.includes('already registered')) return 'الرقم ده مسجّل قبل كده، جرّب تدخل';
-  if (m.includes('Password should')) return 'الباسورد لازم يكون 6 حروف على الأقل';
-  if (m.includes('Email not confirmed')) return 'تأكيد الإيميل لسه مفعّل في إعدادات Supabase';
-  return m ? 'مشكلة: ' + m : 'حصل خطأ، حاول تاني';
-}
-
-function normalizePhone(raw){
-  let p = String(raw || '').replace(/\D/g, '');
-  if (p.startsWith('0020')) p = '0' + p.slice(4);
-  else if (p.startsWith('20') && p.length === 12) p = '0' + p.slice(2);
-  else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
-  return /^01[0125]\d{8}$/.test(p) ? p : null;
-}
-
-$('authBtn').onclick = async () => {
-  const password = $('password').value;
-  const name = $('name').value.trim();
-  const phone = normalizePhone($('phone').value);
-  $('authMsg').textContent = '';
-  if (!phone) { $('authMsg').textContent = 'اكتب رقم موبايل مصري صحيح (11 رقم)'; return; }
-  if (isSignup && normalizePhone($('phone2').value) !== phone) { $('authMsg').textContent = 'الرقمين مش زي بعض، اكتبهم تاني'; return; }
-  if (!password) { $('authMsg').textContent = 'اكتب الباسورد'; return; }
-  if (isSignup && !name) { $('authMsg').textContent = 'اكتب اسمك'; return; }
-  const email = phone + '@' + EMAIL_DOMAIN;
-  $('authBtn').disabled = true;
-  let res;
-  if (isSignup) {
-    res = await sb.auth.signUp({ email, password, options: { data: { role: 'customer', name, phone } } });
-  } else {
-    res = await sb.auth.signInWithPassword({ email, password });
-  }
-  $('authBtn').disabled = false;
-  if (res.error) { $('authMsg').textContent = arabicError(res.error); return; }
-  if (!res.data.session) { $('authMsg').textContent = 'تم إنشاء الحساب. سجّل دخول دلوقتي.'; setTab(false); return; }
-  start();
-};
-
-$('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.replace('./'); };
 
 /* ---------- بدء التطبيق ---------- */
 async function start(){
@@ -333,18 +243,15 @@ async function start(){
   me = user;
   const { data: prof, error: profileError } = await sb.from('profiles').select('role,is_driver').eq('id', me.id).maybeSingle();
   if (profileError || !prof) {
-    $('authMsg').textContent = 'مقدرناش نقرأ بيانات الحساب. جرّب تحديث الصفحة.';
+    await sb.auth.signOut();
+    location.replace('./');
     return;
   }
-  if (prof.role === 'admin') {
-    toast('حساب الإدارة لا يستخدم شاشة الخدمات');
-    await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
+  if (prof.role === 'admin' || (prof.role !== 'customer' && prof.role !== 'driver')) {
+    await sb.auth.signOut();
+    location.replace('./');
+    return;
   }
-  if (prof.role !== 'customer' && prof.role !== 'driver') {
-    toast('نوع الحساب غير مدعوم');
-    await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
-  }
-  $('authScreen').classList.add('hidden');
   $('appScreen').classList.remove('hidden');
   initMap();
   updateFollowBtn();
@@ -1006,7 +913,10 @@ async function loadVehicleTypes(){
 }
 
 /* ---------- تشغيل ---------- */
-sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+sb.auth.getSession().then(({ data }) => {
+  if (data.session) start();
+  else location.replace('./');
+});
 </script>
 </body>
 </html>
