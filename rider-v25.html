@@ -641,6 +641,13 @@ $('dropText').addEventListener('keydown', event => {
 /* ---------- طلب رحلة ---------- */
 $('requestBtn').onclick = async () => {
   if (!pickup || !drop) { toast('حدد نقطة الركوب والوجهة الأول'); return; }
+  if (routeStatus === 'loading' || routeStatus === 'idle') {
+    toast('بنحسب مسافة الطريق، استنى لحظة');
+    return;
+  }
+  if (routeStatus === 'error') {
+    toast('حساب الطريق مش متاح حالياً؛ المعروض تقدير مبدئي');
+  }
   $('requestBtn').disabled = true;
   const { data, error } = await sb.rpc('request_ride', {
     p_pickup_lat: pickup.lat, p_pickup_lng: pickup.lng, p_pickup_text: $('pickupText').value.trim() || pickupAddr || null,
