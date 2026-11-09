@@ -223,7 +223,7 @@
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const APP_NAME = 'خدماتنا';
-const DEFAULT_CENTER = [29.0661, 31.0994];   // مركز الخريطة لو الموقع مش متاح
+const DEFAULT_CENTER = [29.4075, 31.2525];   // مركز أطفيح كاختيار احتياطي فقط عند تعذر GPS
 const EMAIL_DOMAIN = 'tuktuk.app';           // إيميل داخلي بيتبني من رقم الموبايل
 const AVG_SPEED_KMH = 20;                    // لتقدير وقت وصول السواق
 /* ================================================ */
@@ -436,6 +436,7 @@ function setPoint(kind, latlng, label, resolvedAddress){
     pickup = latlng;
     if (pickupMarker) pickupMarker.setLatLng(latlng);
     else pickupMarker = L.marker(latlng, { icon: pinIcon('') }).addTo(map).bindTooltip('نقطة الركوب', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+    if (pickupMarker.getTooltip()) pickupMarker.setTooltipContent(label || 'نقطة الركوب');
     pickupAddr = resolvedAddress || null;
     $('pickupSmall').textContent = label ? 'من • ' + label : 'من';
     if (resolvedAddress) $('pickupLabel').textContent = label || resolvedAddress;
@@ -447,6 +448,7 @@ function setPoint(kind, latlng, label, resolvedAddress){
     drop = latlng;
     if (dropMarker) dropMarker.setLatLng(latlng);
     else dropMarker = L.marker(latlng, { icon: pinIcon('d') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+    if (dropMarker.getTooltip()) dropMarker.setTooltipContent(label || 'مكان الوصول');
     dropAddr = resolvedAddress || null;
     if (resolvedAddress) $('dropLabel').textContent = label || resolvedAddress;
     else {
@@ -612,16 +614,16 @@ async function searchDestination(){
         countrycodes: 'eg',
         'accept-language': 'ar'
       });
-      if (pickup) {
-        params.set('viewbox', [pickup.lng - .18, pickup.lat + .18, pickup.lng + .18, pickup.lat - .18].join(','));
-      }
+      const searchCenter = pickup || map.getCenter();
+      params.set('viewbox', [searchCenter.lng - .18, searchCenter.lat + .18, searchCenter.lng + .18, searchCenter.lat - .18].join(','));
       const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString());
       if (!response.ok) throw new Error('place search unavailable');
       results = await response.json();
       destinationCache[cacheKey] = results;
     }
-    if (pickup && results.length > 1) {
-      results.sort((a, b) => haversine(pickup, L.latLng(Number(a.lat), Number(a.lon))) - haversine(pickup, L.latLng(Number(b.lat), Number(b.lon))));
+    const resultCenter = pickup || map.getCenter();
+    if (results.length > 1) {
+      results.sort((a, b) => haversine(resultCenter, L.latLng(Number(a.lat), Number(a.lon))) - haversine(resultCenter, L.latLng(Number(b.lat), Number(b.lon))));
     }
     const box = $('destinationResults');
     box.replaceChildren();
@@ -637,8 +639,8 @@ async function searchDestination(){
       const name = document.createElement('b');
       name.textContent = title;
       const address = document.createElement('small');
-      const awayKm = pickup ? haversine(pickup, L.latLng(Number(place.lat), Number(place.lon))) : null;
-      address.textContent = (place.display_name || '') + (awayKm !== null ? ' • يبعد ' + awayKm.toFixed(1) + ' كم عن موقع الركوب' : '');
+      const awayKm = haversine(resultCenter, L.latLng(Number(place.lat), Number(place.lon)));
+      address.textContent = (place.display_name || '') + ' • يبعد ' + awayKm.toFixed(1) + (pickup ? ' كم عن موقع الركوب' : ' كم عن المنطقة المعروضة');
       button.append(name, address);
       button.addEventListener('click', () => {
         const point = L.latLng(Number(place.lat), Number(place.lon));
