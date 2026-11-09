@@ -866,13 +866,9 @@ $('pushBtn').onclick = () => setupPush(true).then(ok => { if (ok) toast('الإ�
 })();
 
 /* ---------- تشغيل ---------- */
-// All authentication happens once on the app home screen. Service pages never show legacy phone/password login.
-$('authScreen').classList.add('hidden');
+// Sign-in happens once on the preview home screen; never show the legacy login form here.
 sb.auth.getSession().then(({ data, error }) => {
-  if (error || !data.session) {
-    location.replace('https://emaiaiai2026-bit.github.io/TOKTOK-ATFEH-/preview/');
-    return;
-  }
+  if (error || !data.session) { location.replace('./'); return; }
   start();
 });
 </script>
