@@ -83,6 +83,16 @@
   .loc.on .mini{background:#fff}
   .fields{margin:8px 0 4px}
   .fields input{height:42px;font-size:15px;margin-bottom:8px}
+  .destination-search{display:flex;gap:8px;align-items:center;margin:8px 0 6px}
+  .destination-search input{flex:1;min-width:0;height:46px;margin:0;font-size:15px}
+  .destination-search button{height:46px;min-width:76px;padding:0 14px;border-radius:12px;background:var(--blue);color:#fff;font-weight:800}
+  .destination-search button:disabled{opacity:.55}
+  #destinationResults{display:grid;gap:6px;margin:6px 0 10px}
+  .destination-result{width:100%;text-align:right;background:#fff;border:1px solid var(--line);border-radius:11px;padding:10px 12px;color:var(--navy);font-size:14px}
+  .destination-result b{display:block;font-size:14px}
+  .destination-result small{display:block;color:var(--muted);font-size:11px;margin-top:3px;line-height:1.5}
+  .map-label{border:0!important;background:var(--navy)!important;color:#fff!important;border-radius:8px!important;padding:3px 8px!important;font-family:'Cairo',sans-serif;font-weight:700;font-size:11px}
+  .map-label:before{display:none!important}
   .est{display:flex;align-items:center;justify-content:space-between;background:var(--tint);border-radius:12px;padding:10px 12px;margin:6px 0 12px;min-height:46px}
   #estDist{font-size:14px;color:var(--navy)}
   .chip{background:var(--acc);color:var(--acc-ink);border-radius:20px;padding:4px 14px;font-size:16px;font-weight:800}
@@ -108,6 +118,8 @@
   .pin.d::after{width:8px;height:8px;border-radius:2px;background:#fff}
   .pin.v{width:30px;height:30px;background:var(--acc)}
   .pin.v::after{background:var(--navy)}
+  .pin.poi{width:38px;height:38px;border-radius:13px;background:var(--acc);border:2px solid #fff;box-shadow:0 2px 8px rgba(11,31,75,.3)}
+  .pin.poi::after{content:'🕌';width:auto;height:auto;background:none;border-radius:0;font-size:22px;line-height:1}
 
   #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
 </style>
@@ -115,7 +127,7 @@
 <body>
 
 <!-- ===== الدخول ===== -->
-<div id="authScreen" class="hidden">
+<div id="authScreen">
   <div class="hero">
     <h1 id="brandName">خدماتنا</h1>
     <p>اطلب خدمتك لحد باب بيتك</p>
@@ -170,14 +182,18 @@
       </div>
       <div class="loc on" id="rowDrop">
         <span class="sq"></span>
-        <div class="lt"><small>إلى</small><b id="dropLabel">اضغط على الخريطة لتحديد الوجهة</b></div>
+        <div class="lt"><small>إلى</small><b id="dropLabel">اكتب اسم المكان أو اختاره من الخريطة</b></div>
       </div>
+      <div class="destination-search">
+        <input id="dropText" placeholder="ابحث عن مكان الوصول (مثلاً مسجد المدينة)" aria-label="ابحث عن مكان الوصول">
+        <button id="destinationSearchBtn" type="button">بحث</button>
+      </div>
+      <div id="destinationResults" class="hidden" aria-live="polite"></div>
       <div class="fields">
         <input id="pickupText" placeholder="علامة مميزة عند الركوب (اختياري)" aria-label="علامة مميزة عند الركوب">
-        <input id="dropText" placeholder="اسم مكان الوصول (اختياري)" aria-label="اسم مكان الوصول">
       </div>
       <div class="est"><div id="estDist">حدد الوجهة</div><div class="chip hidden" id="estPrice"></div></div>
-      <button id="requestBtn" class="btn">اطلب</button>
+      <button id="requestBtn" class="btn" disabled>اطلب</button>
       <div class="cashnote">الأجرة بتتفق عليها مع السواق • الدفع كاش</div>
     </div>
 
@@ -209,7 +225,7 @@
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const APP_NAME = 'خدماتنا';
-const DEFAULT_CENTER = [29.0661, 31.0994];   // مركز الخريطة لو الموقع مش متاح
+const DEFAULT_CENTER = [29.402366, 31.275707]; // كفر حلاوة: مركز اختبار احتياطي فقط عند تعذر GPS
 const EMAIL_DOMAIN = 'tuktuk.app';           // إيميل داخلي بيتبني من رقم الموبايل
 const AVG_SPEED_KMH = 20;                    // لتقدير وقت وصول السواق
 /* ================================================ */
@@ -218,7 +234,11 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 
 let me = null, map = null, pickup = null, drop = null;
-let pickupMarker = null, dropMarker = null, driverMarker = null;
+let pickupMarker = null, dropMarker = null, driverMarker = null, routeLayer = null;
+let routeDistanceKm = null, routeStatus = 'idle', routeToken = 0;
+let selectedDestinationText = '';
+let lastGeocodeAt = 0;
+const destinationCache = {};
 let mode = 'drop', isSignup = false, currentRideId = null;
 let pollTimer = null, settingsTimer = null, polling = false;
 let manualPickup = false, watchId = null, fittedRideId = null;
@@ -229,8 +249,7 @@ let following = true, lastFollow = null;
 let liveId = null, meMarker = null, meCircle = null, myLL = null, myAcc = 0, streetLayer = null, satLayer = null;
 let settings = { base_fare: 5, per_km: 4, detour_factor: 1.3 };
 
-document.title = APP_NAME;
-$('brandName').textContent = APP_NAME;
+document.title = APP_NAME;$('brandName').textContent = APP_NAME;
 $('appName').textContent = APP_NAME;
 
 function toast(text){
@@ -360,13 +379,21 @@ function initMap(){
   if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
   map = L.map('map', { zoomControl: false }).setView(DEFAULT_CENTER, 14);
   streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '© OpenStreetMap'
+    maxZoom: 19, attribution: '© OpenStreetMap • Routes © OSRM'
   }).addTo(map);
   satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles © Esri'
   });
   map.attributionControl.setPosition('topleft');
-  map.on('click', e => { if (mode === 'pickup') manualPickup = true; setPoint(mode, e.latlng); });
+  map.on('click', e => {
+    if (mode === 'pickup') manualPickup = true;
+    if (mode === 'drop') {
+      $('dropText').value = '';
+      selectedDestinationText = '';
+      $('destinationResults').classList.add('hidden');
+    }
+    setPoint(mode, e.latlng);
+  });
   map.on('dragstart', () => { following = false; updateFollowBtn(); });
   setTimeout(() => map.invalidateSize(), 200);
 }
@@ -407,28 +434,47 @@ function resolveAddress(kind, ll, fallback){
     const text = await lookupAddress(ll);
     if (token !== addrToken[kind]) return;          // اتغيرت النقطة في الوقت ده
     const shown = text || fallback;
-    if (kind === 'pickup') { pickupAddr = text; $('pickupLabel').textContent = shown; }
-    else { dropAddr = text; $('dropLabel').textContent = shown; }
+    if (kind === 'pickup') {
+      pickupAddr = text; $('pickupLabel').textContent = shown;
+      if (pickupMarker && pickupMarker.getTooltip()) pickupMarker.setTooltipContent(shown);
+    } else {
+      dropAddr = text; $('dropLabel').textContent = shown;
+      if (dropMarker && dropMarker.getTooltip()) dropMarker.setTooltipContent(shown);
+    }
   }, 500);
 }
 
-function setPoint(kind, latlng, label){
+function setPoint(kind, latlng, label, resolvedAddress, isPoi = false){
   if (!ridePanelHidden()) return;
   if (kind === 'pickup') {
     pickup = latlng;
-    if (pickupMarker) pickupMarker.setLatLng(latlng); else pickupMarker = L.marker(latlng, { icon: pinIcon('') }).addTo(map);
-    pickupAddr = null;
+    if (pickupMarker) pickupMarker.setLatLng(latlng);
+    else pickupMarker = L.marker(latlng, { icon: pinIcon('') }).addTo(map).bindTooltip('نقطة الركوب', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+    if (pickupMarker.getTooltip()) pickupMarker.setTooltipContent(label || 'نقطة الركوب');
+    pickupAddr = resolvedAddress || null;
     $('pickupSmall').textContent = label ? 'من • ' + label : 'من';
-    $('pickupLabel').textContent = 'جاري تحديد اسم المنطقة...';
-    resolveAddress('pickup', latlng, label || 'تم تحديد نقطة الركوب');
+    if (resolvedAddress) $('pickupLabel').textContent = label || resolvedAddress;
+    else {
+      $('pickupLabel').textContent = 'جاري تحديد اسم المنطقة...';
+      resolveAddress('pickup', latlng, label || 'تم تحديد نقطة الركوب');
+    }
   } else {
     drop = latlng;
-    if (dropMarker) dropMarker.setLatLng(latlng); else dropMarker = L.marker(latlng, { icon: pinIcon('d') }).addTo(map);
-    dropAddr = null;
-    $('dropLabel').textContent = 'جاري تحديد اسم المنطقة...';
-    resolveAddress('drop', latlng, label || 'تم تحديد الوجهة');
+    if (dropMarker) { dropMarker.setLatLng(latlng); dropMarker.setIcon(pinIcon(isPoi ? 'poi' : 'd')); }
+    else dropMarker = L.marker(latlng, { icon: pinIcon(isPoi ? 'poi' : 'd') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+    if (dropMarker.getTooltip()) dropMarker.setTooltipContent(label || 'مكان الوصول');
+    dropAddr = resolvedAddress || null;
+    if (resolvedAddress) $('dropLabel').textContent = label || resolvedAddress;
+    else {
+      $('dropLabel').textContent = 'جاري تحديد اسم المنطقة...';
+      resolveAddress('drop', latlng, label || 'تم تحديد الوجهة');
+    }
   }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  routeDistanceKm = null;
+  routeStatus = 'idle';
   updateEstimate();
+  refreshRoadRoute();
 }
 
 function setMode(m){
@@ -452,8 +498,7 @@ function locate(){
   let best = null;
   toast('بنحدد موقعك... استنى ثواني');
   watchId = navigator.geolocation.watchPosition(pos => {
-    if (manualPickup || !ridePanelHidden()) { stopWatch(); return; }
-    const acc = pos.coords.accuracy;
+    if (manualPickup || !ridePanelHidden()) { stopWatch(); return; }    const acc = pos.coords.accuracy;
     if (best === null || acc < best) {
       best = acc;
       const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -481,20 +526,231 @@ function haversine(a, b){
 
 function updateEstimate(){
   if (!pickup || !drop) {
-    $('estDist').textContent = 'حدد الوجهة';
+    $('estDist').textContent = dropTextHasQuery() ? 'اختار مكان من نتائج البحث أو حدده على الخريطة' : 'اختار مكان الوصول';
     $('estPrice').classList.add('hidden');
+    $('requestBtn').disabled = true;
     return;
   }
-  const d = haversine(pickup, drop) * Number(settings.detour_factor);
-  const price = Math.ceil(Number(settings.base_fare) + Number(settings.per_km) * d);
-  $('estDist').textContent = 'المسافة تقريباً ' + d.toFixed(1) + ' كم';
+  if (routeStatus === 'loading' || routeStatus === 'idle') {
+    $('estDist').textContent = 'جاري حساب مسافة الطريق...';
+    $('estPrice').classList.add('hidden');
+    $('requestBtn').disabled = true;
+    return;
+  }
+  if (routeStatus === 'ready' && Number.isFinite(routeDistanceKm)) {
+    $('estDist').textContent = 'مسافة الطريق ' + routeDistanceKm.toFixed(1) + ' كم';
+  } else if (routeStatus === 'error') {
+    const approx = haversine(pickup, drop) * Number(settings.detour_factor);
+    $('estDist').textContent = 'تعذر حساب الطريق • تقدير مبدئي ' + approx.toFixed(1) + ' كم';
+  } else {
+    $('estDist').textContent = 'جاري تجهيز المسار...';
+  }
   $('estPrice').textContent = 'حسب الاتفاق';
   $('estPrice').classList.remove('hidden');
+  $('requestBtn').disabled = false;
 }
+
+function dropTextHasQuery(){ return $('dropText').value.trim().length > 0; }
+
+function clearUnconfirmedDestination(){
+  if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  routeToken++;
+  drop = null;
+  dropAddr = null;
+  selectedDestinationText = '';
+  routeDistanceKm = null;
+  routeStatus = 'idle';
+  $('dropLabel').textContent = 'اختار مكان الوصول من نتائج البحث أو الخريطة';
+  updateEstimate();
+}
+
+async function refreshRoadRoute(){
+  if (!pickup || !drop) { routeStatus = 'idle'; updateEstimate(); return; }
+  const token = ++routeToken;
+  routeStatus = 'loading';
+  updateEstimate();
+  const url = 'https://router.project-osrm.org/route/v1/driving/'
+    + pickup.lng + ',' + pickup.lat + ';' + drop.lng + ',' + drop.lat
+    + '?overview=full&geometries=geojson&steps=false';
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('routing service unavailable');
+    const data = await response.json();
+    if (token !== routeToken) return;
+    if (data.code !== 'Ok' || !data.routes || !data.routes.length) throw new Error('no road route');
+    const route = data.routes[0];
+    routeDistanceKm = route.distance / 1000;
+    routeLayer = L.geoJSON(route.geometry, {
+      style: { color:'#1A56DB', weight:6, opacity:.88, lineCap:'round', lineJoin:'round' }
+    }).addTo(map);
+    routeStatus = 'ready';
+    updateEstimate();
+    const bounds = routeLayer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { paddingTopLeft:[28,90], paddingBottomRight:[28, Math.max(290, $('sheet').offsetHeight + 25)], maxZoom:17, animate:false });
+    }
+  } catch (error) {
+    if (token !== routeToken) return;
+    routeStatus = 'error';
+    routeDistanceKm = null;
+    updateEstimate();
+    console.warn('Road route unavailable:', error);
+  }
+}
+
+function escapeHTML(value){
+  return String(value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+
+async function searchDestination(){
+  const query = $('dropText').value.trim();
+  if (query.length < 3) { toast('اكتب اسم المكان بشكل أوضح'); return; }
+  const key = query.toLocaleLowerCase('ar-EG');
+  const wantsMosque = /مسجد|جامع|mosque/i.test(query);
+  $('destinationSearchBtn').disabled = true;
+  $('destinationSearchBtn').textContent = 'بحث...';
+  $('destinationResults').classList.remove('hidden');
+  $('destinationResults').textContent = 'بندور على المكان...';
+  try {
+    const searchCenter = map.getCenter(); // البحث يتبع المنطقة الظاهرة على الخريطة، لا موقع GPS القديم
+    const locationKey = searchCenter.lat.toFixed(3) + ',' + searchCenter.lng.toFixed(3);
+    const cacheKey = (wantsMosque ? 'mosque:' : '') + key + '|' + locationKey;
+    let results = destinationCache[cacheKey];
+    if (!results) {
+      const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
+      if (wait) await new Promise(resolve => setTimeout(resolve, wait));
+      lastGeocodeAt = Date.now();
+
+      if (wantsMosque) {
+        // البحث عن المسجد كمعلم مسجل فقط؛ لا نعرض شارعاً يحمل اسم المسجد.
+        const cleanQuery = query.trim().replace(/[^\p{L}\p{N}\s]/gu, '');
+        const pattern = cleanQuery.split(/\s+/).filter(Boolean).join('.*');
+        const lat = Number(searchCenter.lat.toFixed(5));
+        const lon = Number(searchCenter.lng.toFixed(5));
+        const radius = 12000;
+        const selectors = [];
+        ['name', 'alt_name', 'official_name'].forEach(tag => {
+          selectors.push(`nwr(around:${radius},${lat},${lon})["amenity"="place_of_worship"]["${tag}"~"${pattern}",i];`);
+          selectors.push(`nwr(around:${radius},${lat},${lon})["building"="mosque"]["${tag}"~"${pattern}",i];`);
+        });
+        const overpassQuery = '[out:json][timeout:25];(' + selectors.join('') + ');out center tags;';
+        const endpoints = [
+          'https://overpass-api.de/api/interpreter',
+          'https://overpass.kumi.systems/api/interpreter'
+        ];
+        let payload = null, lastError = null;
+        for (const endpoint of endpoints) {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 28000);
+          try {
+            const response = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+              body: 'data=' + encodeURIComponent(overpassQuery),
+              signal: controller.signal
+            });
+            if (!response.ok) throw new Error('overpass unavailable');
+            payload = await response.json();
+            break;
+          } catch (error) { lastError = error; }
+          finally { clearTimeout(timeout); }
+        }
+        if (!payload) throw (lastError || new Error('place search unavailable'));
+        results = (payload.elements || []).map(element => {
+          const tags = element.tags || {};
+          const point = element.type === 'node'
+            ? { lat: element.lat, lon: element.lon }
+            : element.center;
+          if (!point || !Number.isFinite(Number(point.lat)) || !Number.isFinite(Number(point.lon))) return null;
+          if (tags.amenity !== 'place_of_worship' && tags.building !== 'mosque') return null;
+          const title = tags.name || tags.official_name || tags.alt_name || query;
+          const address = [title, tags['addr:suburb'], tags['addr:city'], tags['addr:state']]
+            .filter(Boolean).filter((value, n, all) => all.indexOf(value) === n).join('، ');
+          return {
+            lat: Number(point.lat), lon: Number(point.lon), name: title,
+            display_name: address || title, isPoi: true
+          };
+        }).filter(Boolean);
+      } else {
+        const params = new URLSearchParams({
+          q: query + ', Egypt',
+          format: 'jsonv2',
+          addressdetails: '1',
+          limit: '10',
+          countrycodes: 'eg',
+          'accept-language': 'ar'
+        });
+        params.set('viewbox', [searchCenter.lng - .18, searchCenter.lat + .18, searchCenter.lng + .18, searchCenter.lat - .18].join(','));
+        const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString());
+        if (!response.ok) throw new Error('place search unavailable');
+        results = await response.json();
+      }
+      destinationCache[cacheKey] = results;
+    }
+    const resultCenter = pickup || map.getCenter();
+    if (results.length > 1) {
+      results.sort((a, b) => haversine(resultCenter, L.latLng(Number(a.lat), Number(a.lon))) - haversine(resultCenter, L.latLng(Number(b.lat), Number(b.lon))));
+    }
+    const box = $('destinationResults');
+    box.replaceChildren();
+    if (!results.length) {
+      box.textContent = wantsMosque
+        ? 'ملقيناش المسجد نفسه بالاسم ده في الخريطة؛ ما اخترناش شارعًا بدل المسجد. جرّب إضافة اسم المنطقة.'
+        : 'ملقيناش المكان. جرّب اسم أقرب شارع أو منطقة.';
+      return;
+    }
+    results.forEach(place => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'destination-result';
+      const title = place.name || (place.display_name || '').split(',')[0] || 'مكان على الخريطة';
+      const name = document.createElement('b');
+      name.textContent = title;
+      const address = document.createElement('small');
+      const awayKm = haversine(resultCenter, L.latLng(Number(place.lat), Number(place.lon)));
+      address.textContent = (place.display_name || '') + ' • يبعد ' + awayKm.toFixed(1) + (pickup ? ' كم عن موقع الركوب' : ' كم عن المنطقة المعروضة');
+      button.append(name, address);
+      button.addEventListener('click', () => {
+        const point = L.latLng(Number(place.lat), Number(place.lon));
+        setPoint('drop', point, title, place.display_name || title, place.isPoi === true);
+        $('dropText').value = title;
+        selectedDestinationText = title;
+        box.classList.add('hidden');
+        focusOn(point, 17);
+        toast(place.isPoi ? 'تم تحديد المسجد نفسه على الخريطة' : 'تم تحديد مكان الوصول على الخريطة');
+      });
+      box.appendChild(button);
+    });
+  } catch (error) {
+    $('destinationResults').textContent = 'البحث مش متاح دلوقتي. جرّب بعد شوية أو اختار المكان من الخريطة.';
+    console.warn('Destination search unavailable:', error);
+  } finally {
+    $('destinationSearchBtn').disabled = false;
+    $('destinationSearchBtn').textContent = 'بحث';
+  }
+}
+$('destinationSearchBtn').addEventListener('click', searchDestination);
+$('dropText').addEventListener('input', () => {
+  if (selectedDestinationText && $('dropText').value.trim() !== selectedDestinationText) {
+    clearUnconfirmedDestination();
+    $('destinationResults').classList.add('hidden');
+  }
+});
+$('dropText').addEventListener('keydown', event => {
+  if (event.key === 'Enter') { event.preventDefault(); searchDestination(); }
+});
 
 /* ---------- طلب رحلة ---------- */
 $('requestBtn').onclick = async () => {
   if (!pickup || !drop) { toast('حدد نقطة الركوب والوجهة الأول'); return; }
+  if (routeStatus === 'loading' || routeStatus === 'idle') {
+    toast('بنحسب مسافة الطريق، استنى لحظة');
+    return;
+  }
+  if (routeStatus === 'error') {
+    toast('حساب الطريق مش متاح حالياً؛ المعروض تقدير مبدئي');
+  }
   $('requestBtn').disabled = true;
   const { data, error } = await sb.rpc('request_ride', {
     p_pickup_lat: pickup.lat, p_pickup_lng: pickup.lng, p_pickup_text: $('pickupText').value.trim() || pickupAddr || null,
@@ -546,7 +802,6 @@ function waNumber(phone){
   if (p.startsWith('0')) p = '20' + p.slice(1);
   return p;
 }
-
 function initials(name){
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '؟';
@@ -557,8 +812,10 @@ function showRidePoints(ride){
   stopWatch();
   const p = L.latLng(ride.pickup_lat, ride.pickup_lng), d = L.latLng(ride.drop_lat, ride.drop_lng);
   pickup = p; drop = d;
-  if (pickupMarker) pickupMarker.setLatLng(p); else pickupMarker = L.marker(p, { icon: pinIcon('') }).addTo(map);
-  if (dropMarker) dropMarker.setLatLng(d); else dropMarker = L.marker(d, { icon: pinIcon('d') }).addTo(map);
+  if (pickupMarker) pickupMarker.setLatLng(p);
+  else pickupMarker = L.marker(p, { icon: pinIcon('') }).addTo(map).bindTooltip('نقطة الركوب', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+  if (dropMarker) dropMarker.setLatLng(d);
+  else dropMarker = L.marker(d, { icon: pinIcon('d') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
   if (fittedRideId !== ride.id) {
     fittedRideId = ride.id;
     following = false; updateFollowBtn();
@@ -663,10 +920,16 @@ $('cancelBtn').onclick = async () => {
 };
 
 $('newBtn').onclick = () => {
-  currentRideId = null; fittedRideId = null; drop = null; dropAddr = null;
+  currentRideId = null; fittedRideId = null; drop = null; dropAddr = null; selectedDestinationText = '';
+  routeToken++;
+  routeDistanceKm = null;
+  routeStatus = 'idle';
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
   $('dropText').value = '';
-  $('dropLabel').textContent = 'اضغط على الخريطة لتحديد الوجهة';
+  selectedDestinationText = '';
+  $('destinationResults').classList.add('hidden');
+  $('dropLabel').textContent = 'اكتب اسم المكان أو اختاره من الخريطة';
   updateEstimate();
   setMode('drop');
   renderRide(null);
@@ -743,15 +1006,7 @@ async function loadVehicleTypes(){
 }
 
 /* ---------- تشغيل ---------- */
-// All authentication happens once on the app home screen. Service pages never show legacy phone/password login.
-$('authScreen').classList.add('hidden');
-sb.auth.getSession().then(({ data, error }) => {
-  if (error || !data.session) {
-    location.replace('https://emaiaiai2026-bit.github.io/TOKTOK-ATFEH-/preview/');
-    return;
-  }
-  start();
-});
+sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
 </script>
 </body>
 </html>
