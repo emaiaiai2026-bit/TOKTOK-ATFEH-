@@ -191,7 +191,7 @@
         <input id="pickupText" placeholder="علامة مميزة عند الركوب (اختياري)" aria-label="علامة مميزة عند الركوب">
       </div>
       <div class="est"><div id="estDist">حدد الوجهة</div><div class="chip hidden" id="estPrice"></div></div>
-      <button id="requestBtn" class="btn">اطلب</button>
+      <button id="requestBtn" class="btn" disabled>اطلب</button>
       <div class="cashnote">الأجرة بتتفق عليها مع السواق • الدفع كاش</div>
     </div>
 
@@ -384,7 +384,15 @@ function initMap(){
     maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles © Esri'
   });
   map.attributionControl.setPosition('topleft');
-  map.on('click', e => { if (mode === 'pickup') manualPickup = true; setPoint(mode, e.latlng); });
+  map.on('click', e => {
+    if (mode === 'pickup') manualPickup = true;
+    if (mode === 'drop') {
+      $('dropText').value = '';
+      selectedDestinationText = '';
+      $('destinationResults').classList.add('hidden');
+    }
+    setPoint(mode, e.latlng);
+  });
   map.on('dragstart', () => { following = false; updateFollowBtn(); });
   setTimeout(() => map.invalidateSize(), 200);
 }
@@ -425,8 +433,13 @@ function resolveAddress(kind, ll, fallback){
     const text = await lookupAddress(ll);
     if (token !== addrToken[kind]) return;          // اتغيرت النقطة في الوقت ده
     const shown = text || fallback;
-    if (kind === 'pickup') { pickupAddr = text; $('pickupLabel').textContent = shown; }
-    else { dropAddr = text; $('dropLabel').textContent = shown; }
+    if (kind === 'pickup') {
+      pickupAddr = text; $('pickupLabel').textContent = shown;
+      if (pickupMarker && pickupMarker.getTooltip()) pickupMarker.setTooltipContent(shown);
+    } else {
+      dropAddr = text; $('dropLabel').textContent = shown;
+      if (dropMarker && dropMarker.getTooltip()) dropMarker.setTooltipContent(shown);
+    }
   }, 500);
 }
 
@@ -599,7 +612,8 @@ async function searchDestination(){
   $('destinationResults').classList.remove('hidden');
   $('destinationResults').textContent = 'بندور على المكان...';
   try {
-    const locationKey = pickup ? pickup.lat.toFixed(2) + ',' + pickup.lng.toFixed(2) : 'no-location';
+    const searchOrigin = pickup || map.getCenter();
+    const locationKey = searchOrigin.lat.toFixed(2) + ',' + searchOrigin.lng.toFixed(2);
     const cacheKey = key + '|' + locationKey;
     let results = destinationCache[cacheKey];
     if (!results) {
