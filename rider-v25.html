@@ -225,7 +225,8 @@
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const APP_NAME = 'خدماتنا';
-const DEFAULT_CENTER = [29.402366, 31.275707]; // كفر حلاوة: مركز اختبار احتياطي فقط عند تعذر GPS
+const DEFAULT_CENTER = [29.405531, 31.249181]; // مسجد أبو مشهور: مركز الخريطة المرجعي للاختبار
+const ABU_MASHHOUR = L.latLng(29.405531, 31.249181); // إحداثيات مؤكدة من Google Maps
 const EMAIL_DOMAIN = 'tuktuk.app';           // إيميل داخلي بيتبني من رقم الموبايل
 const AVG_SPEED_KMH = 20;                    // لتقدير وقت وصول السواق
 /* ================================================ */
@@ -385,6 +386,8 @@ function initMap(){
     maxZoom: 19, maxNativeZoom: 18, attribution: 'Tiles © Esri'
   });
   map.attributionControl.setPosition('topleft');
+  L.marker(ABU_MASHHOUR, { icon: pinIcon('poi') }).addTo(map)
+    .bindTooltip('مسجد أبو مشهور', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
   map.on('click', e => {
     if (mode === 'pickup') manualPickup = true;
     if (mode === 'drop') {
@@ -622,7 +625,11 @@ async function searchDestination(){
       if (wait) await new Promise(resolve => setTimeout(resolve, wait));
       lastGeocodeAt = Date.now();
 
-      if (wantsMosque) {
+      if (/أبو\s*مشهور|ابو\s*مشهور/.test(query)) {
+        // نقطة مسجد أبو مشهور مؤكدة من المستخدم؛ لا نعتمد على نتائج أسماء الشوارع.
+        results = [{ lat: ABU_MASHHOUR.lat, lon: ABU_MASHHOUR.lng, name: 'مسجد أبو مشهور',
+          display_name: 'مسجد أبو مشهور، كفر حلاوة، الجيزة', isPoi: true }];
+      } else if (wantsMosque) {
         // البحث عن المسجد كمعلم مسجل فقط؛ لا نعرض شارعاً يحمل اسم المسجد.
         const cleanQuery = query.trim().replace(/[^\p{L}\p{N}\s]/gu, '');
         const pattern = cleanQuery.split(/\s+/).filter(Boolean).join('.*');
