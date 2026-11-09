@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="logo-192.png">
 <link rel="apple-touch-icon" href="logo-192.png">
 <script>
-var PAGES = { rider: 'rider-v25.html', driver: 'driver-v22.html' };
+var PAGES = { rider: 'rider-unified.html', driver: 'driver-v22.html' };
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
@@ -168,7 +168,7 @@ function toast(t){
 
 document.querySelectorAll('a[data-go]').forEach(function (a) {
   var role = a.dataset.go;
-  a.href = PAGES[role] + '?v=2026110904' + (a.dataset.type ? '&type=' + encodeURIComponent(a.dataset.type) : '');
+  a.href = PAGES[role] + '?v=2026110905' + (a.dataset.type ? '&type=' + encodeURIComponent(a.dataset.type) : '');
   a.addEventListener('click', function () {
     try { localStorage.setItem('tt_role', role); } catch (e) {}
   });
