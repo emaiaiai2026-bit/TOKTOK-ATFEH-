@@ -341,7 +341,7 @@ async function refresh(){
   const { data, error } = await sb.rpc('admin_driver_overview');
   if (error) { toast('مشكلة في جلب السواقين: ' + error.message); return; }
   drivers = data || [];
-  const pv = await sb.from('profiles').select('id,vehicle_type').eq('role', 'driver');
+  const pv = await sb.from('profiles').select('id,vehicle_type').eq('is_driver', true);
   driverVehicle = {};
   (pv.data || []).forEach(p => { driverVehicle[p.id] = p.vehicle_type; });
   renderMap();
