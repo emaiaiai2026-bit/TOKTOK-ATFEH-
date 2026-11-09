@@ -118,6 +118,8 @@
   .pin.d::after{width:8px;height:8px;border-radius:2px;background:#fff}
   .pin.v{width:30px;height:30px;background:var(--acc)}
   .pin.v::after{background:var(--navy)}
+  .pin.poi{width:38px;height:38px;border-radius:13px;background:var(--acc);border:2px solid #fff;box-shadow:0 2px 8px rgba(11,31,75,.3)}
+  .pin.poi::after{content:'🕌';width:auto;height:auto;background:none;border-radius:0;font-size:22px;line-height:1}
 
   #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
 </style>
@@ -247,8 +249,7 @@ let following = true, lastFollow = null;
 let liveId = null, meMarker = null, meCircle = null, myLL = null, myAcc = 0, streetLayer = null, satLayer = null;
 let settings = { base_fare: 5, per_km: 4, detour_factor: 1.3 };
 
-document.title = APP_NAME;
-$('brandName').textContent = APP_NAME;
+document.title = APP_NAME;$('brandName').textContent = APP_NAME;
 $('appName').textContent = APP_NAME;
 
 function toast(text){
@@ -443,7 +444,7 @@ function resolveAddress(kind, ll, fallback){
   }, 500);
 }
 
-function setPoint(kind, latlng, label, resolvedAddress){
+function setPoint(kind, latlng, label, resolvedAddress, isPoi = false){
   if (!ridePanelHidden()) return;
   if (kind === 'pickup') {
     pickup = latlng;
@@ -459,8 +460,8 @@ function setPoint(kind, latlng, label, resolvedAddress){
     }
   } else {
     drop = latlng;
-    if (dropMarker) dropMarker.setLatLng(latlng);
-    else dropMarker = L.marker(latlng, { icon: pinIcon('d') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+    if (dropMarker) { dropMarker.setLatLng(latlng); dropMarker.setIcon(pinIcon(isPoi ? 'poi' : 'd')); }
+    else dropMarker = L.marker(latlng, { icon: pinIcon(isPoi ? 'poi' : 'd') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
     if (dropMarker.getTooltip()) dropMarker.setTooltipContent(label || 'مكان الوصول');
     dropAddr = resolvedAddress || null;
     if (resolvedAddress) $('dropLabel').textContent = label || resolvedAddress;
@@ -497,8 +498,7 @@ function locate(){
   let best = null;
   toast('بنحدد موقعك... استنى ثواني');
   watchId = navigator.geolocation.watchPosition(pos => {
-    if (manualPickup || !ridePanelHidden()) { stopWatch(); return; }
-    const acc = pos.coords.accuracy;
+    if (manualPickup || !ridePanelHidden()) { stopWatch(); return; }    const acc = pos.coords.accuracy;
     if (best === null || acc < best) {
       best = acc;
       const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -607,32 +607,63 @@ async function searchDestination(){
   const query = $('dropText').value.trim();
   if (query.length < 3) { toast('اكتب اسم المكان بشكل أوضح'); return; }
   const key = query.toLocaleLowerCase('ar-EG');
+  const wantsMosque = /مسجد|جامع|mosque/i.test(query);
   $('destinationSearchBtn').disabled = true;
   $('destinationSearchBtn').textContent = 'بحث...';
   $('destinationResults').classList.remove('hidden');
   $('destinationResults').textContent = 'بندور على المكان...';
   try {
-    const searchOrigin = pickup || map.getCenter();
-    const locationKey = searchOrigin.lat.toFixed(2) + ',' + searchOrigin.lng.toFixed(2);
-    const cacheKey = key + '|' + locationKey;
+    const searchCenter = pickup || map.getCenter();
+    const locationKey = searchCenter.lat.toFixed(2) + ',' + searchCenter.lng.toFixed(2);
+    const cacheKey = (wantsMosque ? 'mosque:' : '') + key + '|' + locationKey;
     let results = destinationCache[cacheKey];
     if (!results) {
       const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
       if (wait) await new Promise(resolve => setTimeout(resolve, wait));
       lastGeocodeAt = Date.now();
-      const params = new URLSearchParams({
-        q: query + ', Egypt',
-        format: 'jsonv2',
-        addressdetails: '1',
-        limit: '10',
-        countrycodes: 'eg',
-        'accept-language': 'ar'
-      });
-      const searchCenter = pickup || map.getCenter();
-      params.set('viewbox', [searchCenter.lng - .18, searchCenter.lat + .18, searchCenter.lng + .18, searchCenter.lat - .18].join(','));
-      const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString());
-      if (!response.ok) throw new Error('place search unavailable');
-      results = await response.json();
+
+      if (wantsMosque) {
+        // عند البحث عن مسجد: نطلب أماكن العبادة نفسها، لا الشوارع التي تحمل اسم المسجد.
+        const params = new URLSearchParams({
+          q: query,
+          format: 'json',
+          lang: 'ar',
+          limit: '10',
+          countrycode: 'EG',
+          lat: String(searchCenter.lat),
+          lon: String(searchCenter.lng),
+          zoom: '16',
+          location_bias_scale: '0.2',
+          osm_tag: 'amenity:place_of_worship'
+        });
+        const response = await fetch('https://photon.komoot.io/api/?' + params.toString());
+        if (!response.ok) throw new Error('place search unavailable');
+        const data = await response.json();
+        results = (data.features || []).map(feature => {
+          const p = feature.properties || {};
+          const coords = feature.geometry && feature.geometry.coordinates;
+          if (!coords || !Number.isFinite(Number(coords[0])) || !Number.isFinite(Number(coords[1]))) return null;
+          const title = p.name || query;
+          const address = [p.name, p.street, p.district, p.city, p.county, p.state, p.country].filter(Boolean).filter((v, n, a) => a.indexOf(v) === n).join('، ');
+          return {
+            lat: coords[1], lon: coords[0], name: title,
+            display_name: address || title, isPoi: true
+          };
+        }).filter(Boolean);
+      } else {
+        const params = new URLSearchParams({
+          q: query + ', Egypt',
+          format: 'jsonv2',
+          addressdetails: '1',
+          limit: '10',
+          countrycodes: 'eg',
+          'accept-language': 'ar'
+        });
+        params.set('viewbox', [searchCenter.lng - .18, searchCenter.lat + .18, searchCenter.lng + .18, searchCenter.lat - .18].join(','));
+        const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString());
+        if (!response.ok) throw new Error('place search unavailable');
+        results = await response.json();
+      }
       destinationCache[cacheKey] = results;
     }
     const resultCenter = pickup || map.getCenter();
@@ -642,7 +673,9 @@ async function searchDestination(){
     const box = $('destinationResults');
     box.replaceChildren();
     if (!results.length) {
-      box.textContent = 'ملقيناش المكان. جرّب اسم أقرب شارع أو منطقة.';
+      box.textContent = wantsMosque
+        ? 'ملقيناش المسجد نفسه بالاسم ده في الخريطة؛ ما اخترناش شارعًا بدل المسجد. جرّب إضافة اسم المنطقة.'
+        : 'ملقيناش المكان. جرّب اسم أقرب شارع أو منطقة.';
       return;
     }
     results.forEach(place => {
@@ -658,12 +691,12 @@ async function searchDestination(){
       button.append(name, address);
       button.addEventListener('click', () => {
         const point = L.latLng(Number(place.lat), Number(place.lon));
-        setPoint('drop', point, title, place.display_name || title);
-        $('dropText').value = place.display_name || title;
-        selectedDestinationText = $('dropText').value.trim();
+        setPoint('drop', point, title, place.display_name || title, place.isPoi === true);
+        $('dropText').value = title;
+        selectedDestinationText = title;
         box.classList.add('hidden');
         focusOn(point, 17);
-        toast('تم تحديد مكان الوصول على الخريطة');
+        toast(place.isPoi ? 'تم تحديد المسجد نفسه على الخريطة' : 'تم تحديد مكان الوصول على الخريطة');
       });
       box.appendChild(button);
     });
@@ -747,7 +780,6 @@ function waNumber(phone){
   if (p.startsWith('0')) p = '20' + p.slice(1);
   return p;
 }
-
 function initials(name){
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '؟';
