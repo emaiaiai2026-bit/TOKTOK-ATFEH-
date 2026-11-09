@@ -703,8 +703,10 @@ function showRidePoints(ride){
   stopWatch();
   const p = L.latLng(ride.pickup_lat, ride.pickup_lng), d = L.latLng(ride.drop_lat, ride.drop_lng);
   pickup = p; drop = d;
-  if (pickupMarker) pickupMarker.setLatLng(p); else pickupMarker = L.marker(p, { icon: pinIcon('') }).addTo(map);
-  if (dropMarker) dropMarker.setLatLng(d); else dropMarker = L.marker(d, { icon: pinIcon('d') }).addTo(map);
+  if (pickupMarker) pickupMarker.setLatLng(p);
+  else pickupMarker = L.marker(p, { icon: pinIcon('') }).addTo(map).bindTooltip('نقطة الركوب', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
+  if (dropMarker) dropMarker.setLatLng(d);
+  else dropMarker = L.marker(d, { icon: pinIcon('d') }).addTo(map).bindTooltip('مكان الوصول', { permanent:true, direction:'top', offset:[0,-12], className:'map-label' });
   if (fittedRideId !== ride.id) {
     fittedRideId = ride.id;
     following = false; updateFollowBtn();
@@ -810,9 +812,14 @@ $('cancelBtn').onclick = async () => {
 
 $('newBtn').onclick = () => {
   currentRideId = null; fittedRideId = null; drop = null; dropAddr = null;
+  routeToken++;
+  routeDistanceKm = null;
+  routeStatus = 'idle';
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
   $('dropText').value = '';
-  $('dropLabel').textContent = 'اضغط على الخريطة لتحديد الوجهة';
+  $('destinationResults').classList.add('hidden');
+  $('dropLabel').textContent = 'اكتب اسم المكان أو اختاره من الخريطة';
   updateEstimate();
   setMode('drop');
   renderRide(null);
