@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>توكتوك - الإدارة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --blue:#1A56DB; --blue-dark:#1244B0; --navy:#0B1F4B; --tint:#EAF1FF;
+    --acc:#FFB400; --acc-ink:#4A3200; --line:#DCE3F0; --muted:#5B6B8C; --danger:#B42318; --go:#1F9D55;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:'Cairo',system-ui,sans-serif;color:var(--navy);background:var(--tint)}
+  .hidden{display:none !important}
+  button,input{font-family:inherit;font-size:16px}
+  button{cursor:pointer;border:0}
+  :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+  input{width:100%;height:48px;padding:0 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--navy);margin-bottom:10px;outline:none}
+  input:focus{border-color:var(--blue)}
+  label{display:block;font-size:14px;font-weight:700;margin:0 0 6px}
+  .hint{font-size:12px;color:var(--muted);margin:-4px 0 12px}
+  .btn{width:100%;background:var(--blue);color:#fff;border-radius:14px;padding:14px 0;font-size:17px;font-weight:700}
+  .btn:active{background:var(--blue-dark)}
+  .btn:disabled{opacity:.6}
+  .sm{border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700}
+  .sm.go{background:var(--go);color:#fff}
+  .sm.stop{background:#fff;color:var(--danger);border:1.5px solid var(--danger)}
+  .sm.pay{background:var(--tint);color:var(--blue)}
+
+  /* دخول */
+  #authScreen{min-height:100%;display:flex;flex-direction:column;background:var(--navy)}
+  .hero{padding:64px 24px 30px;color:#fff}
+  .hero h1{margin:0;font-size:32px;font-weight:800;display:inline-block;border-bottom:5px solid var(--acc);line-height:1.3}
+  .hero p{margin:10px 0 0;color:#B8C6E8}
+  .authsheet{background:#fff;border-radius:24px 24px 0 0;padding:22px 20px 32px;flex:1}
+  .msg{min-height:22px;margin:10px 0 0;color:var(--danger);font-size:14px}
+
+  /* التطبيق */
+  #app{position:fixed;inset:0;display:flex;flex-direction:column}
+  header{background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top))}
+  header b{font-size:18px;font-weight:800;border-bottom:3px solid var(--acc)}
+  header button{background:transparent;color:#fff;border:1px solid #4b5360;border-radius:10px;padding:6px 14px;font-size:14px}
+  main{flex:1;min-height:0;position:relative}
+  .pane{position:absolute;inset:0;overflow:auto;padding:14px}
+  #paneMap{padding:0}
+  #map{position:absolute;inset:0;direction:ltr}
+  .leaflet-tile-pane{filter:saturate(.55) brightness(1.04)}
+  .count{position:absolute;top:12px;right:12px;z-index:1000;background:#fff;border:1px solid var(--line);border-radius:22px;padding:8px 16px;font-weight:800;font-size:15px}
+  nav{display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+  nav button{flex:1;background:transparent;color:var(--muted);padding:14px 0;font-size:15px;font-weight:700;border-top:3px solid transparent}
+  nav button.on{color:var(--blue);border-top-color:var(--blue)}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .name{font-weight:800;font-size:17px}
+  .meta{font-size:13px;color:var(--muted)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .chip{border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700}
+  .chip.wait{background:var(--acc);color:var(--acc-ink)}
+  .chip.on{background:#DDF3E6;color:#14683A}
+  .chip.off{background:#EEF0F4;color:var(--muted)}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0;text-align:center}
+  .stat{background:var(--tint);border-radius:12px;padding:8px 4px}
+  .stat b{display:block;font-size:17px}
+  .stat span{font-size:11px;color:var(--muted)}
+  .stat.due b{color:var(--danger)}
+  .stat.credit b{color:var(--go)}
+  .actions{display:flex;gap:8px;flex-wrap:wrap}
+  .empty{background:#fff;border:1px dashed var(--line);border-radius:14px;padding:24px;text-align:center;color:var(--muted)}
+  h2{margin:4px 0 12px;font-size:19px}
+  .pin{width:26px;height:26px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+  .pin::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--navy)}
+  .pin.g{background:#B9C2D6}
+  #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- دخول الإدارة -->
+<div id="authScreen">
+  <div class="hero"><h1>لوحة الإدارة</h1><p>توكتوك</p></div>
+  <div class="authsheet">
+    <input id="phone" placeholder="رقم موبايل الإدارة" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
+    <input id="password" type="password" placeholder="الباسورد" autocomplete="current-password" aria-label="الباسورد">
+    <button id="authBtn" class="btn">دخول</button>
+    <p id="authMsg" class="msg" role="alert"></p>
+  </div>
+</div>
+
+<!-- اللوحة -->
+<div id="app" class="hidden">
+  <header><b>توكتوك • الإدارة</b><button id="logoutBtn">خروج</button></header>
+  <main>
+    <section class="pane" id="paneMap">
+      <div id="map"></div>
+      <div class="count" id="mapCount">...</div>
+    </section>
+
+    <section class="pane hidden" id="paneDrivers">
+      <h2>السواقين</h2>
+      <div id="driverList"></div>
+    </section>
+
+    <section class="pane hidden" id="paneSettings">
+      <h2>الأسعار والعمولة</h2>
+      <div class="card">
+        <label for="fBase">سعر الفتح (جنيه)</label>
+        <input id="fBase" type="number" inputmode="decimal" min="0" step="0.5">
+        <label for="fKm">سعر الكيلو (جنيه)</label>
+        <input id="fKm" type="number" inputmode="decimal" min="0" step="0.5">
+        <label for="fComm">نسبة عمولتك من كل رحلة (%)</label>
+        <input id="fComm" type="number" inputmode="decimal" min="0" max="100" step="0.5">
+        <p class="hint">بتتحسب لوحدها لما السواق يضغط «أنهي الرحلة».</p>
+        <label for="fMaxDebt">أقصى مبلغ ممكن يبقى على السواق (جنيه)</label>
+        <input id="fMaxDebt" type="number" inputmode="decimal" min="0" step="10">
+        <p class="hint">لو عمولته المستحقة وصلت المبلغ ده، التطبيق بيوقفه لحد ما يدفع. اكتب 0 لو عايز السواق يشحن قبل ما يشتغل.</p>
+        <label for="fRadius">نطاق البحث عن السواقين (كم)</label>
+        <input id="fRadius" type="number" inputmode="decimal" min="0.5" step="0.5">
+        <label for="fDetour">معامل تعويض الطرق المتعرجة</label>
+        <input id="fDetour" type="number" inputmode="decimal" min="1" step="0.05">
+        <p class="hint">المسافة المباشرة بتتضرب فيه عشان تقرّب المسافة الفعلية. 1.3 معناها +30%.</p>
+        <button id="saveSettings" class="btn">حفظ</button>
+      </div>
+    </section>
+  </main>
+  <nav>
+    <button id="tabMap" class="on">الخريطة</button>
+    <button id="tabDrivers">السواقين</button>
+    <button id="tabSettings">الأسعار</button>
+  </nav>
+</div>
+
+<div id="toast" class="hidden" role="status"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
+const DEFAULT_CENTER = [29.0661, 31.0994];
+const EMAIL_DOMAIN = 'tuktuk.app';
+const FRESH_MS = 120000;          // السواق اللي موقعه أحدث من دقيقتين بيتحسب "متصل"
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let map = null, markers = [], drivers = [], firstFit = true, timer = null, settingsLoaded = false, maxDebt = Infinity;
+
+function toast(t){
+  const el = $('toast'); el.textContent = t; el.classList.remove('hidden');
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function normalizePhone(raw){
+  let p = String(raw || '').replace(/\D/g, '');
+  if (p.startsWith('0020')) p = '0' + p.slice(4);
+  else if (p.startsWith('20') && p.length === 12) p = '0' + p.slice(2);
+  else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
+  return /^01[0125]\d{8}$/.test(p) ? p : null;
+}
+
+/* ---------- الدخول ---------- */
+$('authBtn').onclick = async () => {
+  const phone = normalizePhone($('phone').value), password = $('password').value;
+  $('authMsg').textContent = '';
+  if (!phone || !password) { $('authMsg').textContent = 'اكتب رقم الموبايل والباسورد'; return; }
+  $('authBtn').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email: phone + '@' + EMAIL_DOMAIN, password });
+  $('authBtn').disabled = false;
+  if (error) { $('authMsg').textContent = error.message.includes('Invalid login') ? 'الرقم أو الباسورد غلط' : error.message; return; }
+  start();
+};
+$('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+async function start(){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { data: prof } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (!prof || prof.role !== 'admin') {
+    $('authMsg').textContent = 'الحساب ده مش حساب إدارة';
+    await sb.auth.signOut(); return;
+  }
+  $('authScreen').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  initMap();
+  loadSettings();
+  refresh();
+  clearInterval(timer); timer = setInterval(refresh, 10000);
+}
+
+/* ---------- التابات ---------- */
+function showTab(name){
+  const map2 = { map: 'paneMap', drivers: 'paneDrivers', settings: 'paneSettings' };
+  Object.entries(map2).forEach(([k, id]) => {
+    $(id).classList.toggle('hidden', k !== name);
+    $('tab' + k[0].toUpperCase() + k.slice(1)).classList.toggle('on', k === name);
+  });
+  if (name === 'map' && map) setTimeout(() => map.invalidateSize(), 50);
+}
+$('tabMap').onclick = () => showTab('map');
+$('tabDrivers').onclick = () => showTab('drivers');
+$('tabSettings').onclick = () => showTab('settings');
+
+/* ---------- الخريطة ---------- */
+function initMap(){
+  if (map) return;
+  map = L.map('map', { zoomControl: false }).setView(DEFAULT_CENTER, 13);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+function ago(ts){
+  const m = Math.max(0, Math.round((Date.now() - new Date(ts).getTime()) / 60000));
+  return m < 1 ? 'دلوقتي' : m < 60 ? 'من ' + m + ' دقيقة' : 'من ' + Math.round(m / 60) + ' ساعة';
+}
+
+function renderMap(){
+  markers.forEach(m => map.removeLayer(m)); markers = [];
+  const live = drivers.filter(d => d.is_approved && d.is_available && d.lat != null && d.lng != null);
+  live.forEach(d => {
+    const fresh = Date.now() - new Date(d.updated_at).getTime() < FRESH_MS;
+    const icon = L.divIcon({ className: '', html: '<div class="pin' + (fresh ? '' : ' g') + '"></div>', iconSize: [26, 26], iconAnchor: [13, 13] });
+    const pop = document.createElement('div');
+    pop.dir = 'rtl';
+    const n = document.createElement('b'); n.textContent = d.name || 'سواق';
+    const l1 = document.createElement('div'); l1.textContent = d.plate_number ? 'توكتوك ' + d.plate_number : '';
+    const l2 = document.createElement('div'); l2.textContent = d.phone || '';
+    const l3 = document.createElement('div'); l3.textContent = 'آخر تحديث ' + ago(d.updated_at);
+    [n, l1, l2, l3].forEach(x => pop.appendChild(x));
+    markers.push(L.marker([d.lat, d.lng], { icon }).bindPopup(pop).addTo(map));
+  });
+  const fresh = live.filter(d => Date.now() - new Date(d.updated_at).getTime() < FRESH_MS).length;
+  $('mapCount').textContent = fresh + ' سواق متصل' + (live.length > fresh ? ' • ' + (live.length - fresh) + ' موقعه قديم' : '');
+  if (firstFit && live.length) {
+    firstFit = false;
+    map.fitBounds(L.latLngBounds(live.map(d => [d.lat, d.lng])), { padding: [60, 60], maxZoom: 16 });
+  }
+}
+
+/* ---------- السواقين ---------- */
+function money(n){ return Number(n || 0).toFixed(0); }
+
+function renderList(){
+  const box = $('driverList');
+  box.textContent = '';
+  if (!drivers.length) { const e = document.createElement('div'); e.className = 'empty'; e.textContent = 'لسه مفيش سواقين مسجلين'; box.appendChild(e); return; }
+  drivers.forEach(d => {
+    const card = document.createElement('div'); card.className = 'card';
+
+    const top = document.createElement('div'); top.className = 'row';
+    const left = document.createElement('div');
+    const nm = document.createElement('div'); nm.className = 'name'; nm.textContent = d.name || 'سواق';
+    const mt = document.createElement('div'); mt.className = 'meta'; mt.dir = 'ltr'; mt.style.textAlign = 'right';
+    mt.textContent = (d.phone || '') + (d.plate_number ? '  •  ' + d.plate_number : '');
+    left.appendChild(nm); left.appendChild(mt); top.appendChild(left);
+    card.appendChild(top);
+
+    const chips = document.createElement('div'); chips.className = 'chips';
+    const c1 = document.createElement('span');
+    if (!d.is_approved) { c1.className = 'chip wait'; c1.textContent = 'مستني الموافقة'; }
+    else if (Number(d.balance) >= maxDebt) { c1.className = 'chip wait'; c1.textContent = 'موقوف: رصيده خلص'; }
+    else if (d.is_available) { c1.className = 'chip on'; c1.textContent = 'متاح الآن'; }
+    else { c1.className = 'chip off'; c1.textContent = 'مش متاح'; }
+    chips.appendChild(c1); card.appendChild(chips);
+
+    const stats = document.createElement('div'); stats.className = 'stats';
+    const bal = Number(d.balance || 0);
+    const third = bal < 0 ? ['له رصيد', money(Math.abs(bal)) + ' ج', 'credit'] : ['عليه دلوقتي', money(bal) + ' ج', 'due'];
+    [['رحلات', d.rides_completed, ''], ['عمولاتك', money(d.commission_total) + ' ج', ''], third].forEach(([lab, val, cls]) => {
+      const s = document.createElement('div'); s.className = 'stat ' + cls;
+      const b = document.createElement('b'); b.textContent = val;
+      const sp = document.createElement('span'); sp.textContent = lab;
+      s.appendChild(b); s.appendChild(sp); stats.appendChild(s);
+    });
+    card.appendChild(stats);
+
+    const act = document.createElement('div'); act.className = 'actions';
+    const ap = document.createElement('button');
+    ap.className = 'sm ' + (d.is_approved ? 'stop' : 'go');
+    ap.textContent = d.is_approved ? 'إيقاف السواق' : 'وافق على السواق';
+    ap.onclick = () => setApproved(d, !d.is_approved);
+    const pay = document.createElement('button'); pay.className = 'sm pay'; pay.textContent = 'استلمت من السواق';
+    pay.onclick = () => recordPayment(d);
+    act.appendChild(ap); act.appendChild(pay); card.appendChild(act);
+
+    box.appendChild(card);
+  });
+}
+
+async function setApproved(d, ok){
+  if (!ok && !confirm('إيقاف ' + (d.name || 'السواق') + ' هيمنعه من استقبال الطلبات. متأكد؟')) return;
+  const { error } = await sb.rpc('admin_set_driver_approved', { p_driver: d.id, p_approved: ok });
+  if (error) { toast('مقدرناش: ' + error.message); return; }
+  toast(ok ? 'تمت الموافقة' : 'تم الإيقاف');
+  refresh();
+}
+
+async function recordPayment(d){
+  const v = prompt('المبلغ اللي استلمته من ' + (d.name || 'السواق') + ' (جنيه):', Math.max(0, Math.round(d.balance || 0)));
+  if (v === null) return;
+  const amount = Number(String(v).replace(/[^\d.]/g, ''));
+  if (!amount || amount <= 0) { toast('اكتب مبلغ صحيح'); return; }
+  const { error } = await sb.rpc('admin_record_payment', { p_driver: d.id, p_amount: amount, p_note: null });
+  if (error) { toast('مقدرناش: ' + error.message); return; }
+  toast('اتسجّل التحصيل: ' + amount + ' جنيه');
+  refresh();
+}
+
+async function refresh(){
+  const { data, error } = await sb.rpc('admin_driver_overview');
+  if (error) { toast('مشكلة في جلب السواقين: ' + error.message); return; }
+  drivers = data || [];
+  renderMap();
+  renderList();
+}
+
+/* ---------- الأسعار ---------- */
+async function loadSettings(){
+  const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
+  if (!data) return;
+  $('fBase').value = data.base_fare; $('fKm').value = data.per_km;
+  $('fComm').value = data.commission_percent; $('fRadius').value = data.search_radius_km;
+  $('fDetour').value = data.detour_factor;
+  $('fMaxDebt').value = data.max_debt;
+  maxDebt = Number(data.max_debt);
+}
+
+$('saveSettings').onclick = async () => {
+  const v = { base_fare: Number($('fBase').value), per_km: Number($('fKm').value),
+              commission_percent: Number($('fComm').value), search_radius_km: Number($('fRadius').value),
+              detour_factor: Number($('fDetour').value), max_debt: Number($('fMaxDebt').value) };
+  if (Object.values(v).some(x => !Number.isFinite(x) || x < 0)) { toast('اكتب أرقام صحيحة في كل الخانات'); return; }
+  if (v.commission_percent > 100) { toast('العمولة لازم تكون من 0 لـ 100'); return; }
+  if (v.detour_factor < 1) { toast('معامل الطرق لازم يكون 1 أو أكتر'); return; }
+  if (v.search_radius_km < 0.5) { toast('نطاق البحث 0.5 كم على الأقل'); return; }
+  $('saveSettings').disabled = true;
+  const { error } = await sb.from('settings').update(v).eq('id', 1);
+  $('saveSettings').disabled = false;
+  if (!error) { maxDebt = v.max_debt; renderList(); }
+  toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
+};
+
+sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+</script>
+</body>
+</html>

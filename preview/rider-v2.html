@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1D2127">
+<title>توكتوك</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root{
+    --ink:#1D2127; --yellow:#F7B500; --yellow-dark:#D99A00; --road:#E9EAEC;
+    --white:#fff; --go:#1F9D55; --alert:#D64545; --muted:#6B7280;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;font-family:'Cairo',system-ui,sans-serif;background:var(--road);color:var(--ink)}
+  .hidden{display:none !important}
+  button,input{font-family:inherit;font-size:16px}
+  input{width:100%;padding:12px 14px;border:2px solid var(--road);border-radius:10px;background:var(--white);margin-bottom:10px;outline:none}
+  input:focus{border-color:var(--yellow)}
+  button{cursor:pointer;border:0;border-radius:10px;padding:12px 14px;font-weight:600}
+  button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+  .primary{background:var(--yellow);color:var(--ink);width:100%;font-size:18px;font-weight:800;padding:14px}
+  .primary:active{background:var(--yellow-dark)}
+  .primary:disabled{opacity:.5}
+  .danger{background:transparent;color:var(--alert);border:2px solid var(--alert);width:100%;margin-top:10px}
+  .chip{flex:1;background:var(--road);color:var(--ink)}
+  .chip.on{background:var(--ink);color:var(--white)}
+
+  /* دخول */
+  #authScreen{min-height:100%;display:flex;align-items:center;justify-content:center;padding:20px;background:var(--ink)}
+  .card{background:var(--white);border-radius:16px;padding:22px;width:100%;max-width:380px}
+  .brand{font-weight:800;font-size:30px;margin:0 0 4px}
+  .brand span{background:var(--yellow);padding:0 8px;border-radius:6px}
+  .sub{margin:0 0 16px;color:var(--muted)}
+  .tabs{display:flex;gap:8px;margin-bottom:14px}
+  .msg{min-height:22px;margin:10px 0 0;color:var(--alert);font-size:14px}
+
+  /* التطبيق */
+  #appScreen{display:flex;flex-direction:column;height:100%}
+  header{background:var(--ink);color:var(--white);display:flex;justify-content:space-between;align-items:center;padding:8px 14px}
+  header .brand{font-size:20px;margin:0}
+  header button{background:transparent;color:var(--white);border:1px solid #4b5360;padding:6px 12px}
+  #map{flex:1;min-height:0;direction:ltr}
+  #panel{background:var(--white);padding:14px 14px calc(14px + env(safe-area-inset-bottom));border-radius:18px 18px 0 0;margin-top:-14px;position:relative;z-index:500;box-shadow:0 -4px 14px rgba(0,0,0,.12)}
+  .row{display:flex;gap:8px;margin-bottom:10px}
+  .hint{margin:0 0 8px;color:var(--muted);font-size:14px}
+  #estimate{font-weight:600;margin:2px 0 10px;min-height:24px}
+  #statusText{font-size:20px;font-weight:800;margin-bottom:8px}
+  #rideInfo{color:var(--muted);font-size:14px;margin-bottom:8px}
+  #driverBox{background:var(--road);border-radius:12px;padding:12px;margin-bottom:8px}
+  #driverName{font-weight:800}
+  #driverPlate{color:var(--muted);margin-bottom:8px}
+  .linkbtn{flex:1;text-align:center;text-decoration:none;color:var(--ink);background:var(--white);border:2px solid var(--ink);border-radius:10px;padding:10px;font-weight:600}
+  #toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--white);padding:10px 16px;border-radius:10px;z-index:2000;max-width:90%;text-align:center}
+  @media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</head>
+<body>
+
+<!-- شاشة الدخول -->
+<div id="authScreen">
+  <div class="card">
+    <h1 class="brand"><span id="brandName">توكتوك</span></h1>
+    <p class="sub">اطلب توكتوك لحد باب بيتك</p>
+    <div class="tabs">
+      <button id="tabLogin" class="chip on">دخول</button>
+      <button id="tabSignup" class="chip">حساب جديد</button>
+    </div>
+    <input id="phone" placeholder="رقم الموبايل (01xxxxxxxxx)" inputmode="tel" autocomplete="tel">
+    <input id="name" class="signup hidden" placeholder="الاسم" autocomplete="name">
+    <input id="password" type="password" placeholder="الباسورد (6 حروف على الأقل)" autocomplete="current-password">
+    <button id="authBtn" class="primary">دخول</button>
+    <p id="authMsg" class="msg" role="alert"></p>
+  </div>
+</div>
+
+<!-- شاشة التطبيق -->
+<div id="appScreen" class="hidden">
+  <header>
+    <h1 class="brand" id="appName">توكتوك</h1>
+    <button id="logoutBtn">خروج</button>
+  </header>
+  <div id="map"></div>
+  <div id="panel">
+    <div id="bookPanel">
+      <div class="row">
+        <button id="modePickup" class="chip">📍 نقطة الركوب</button>
+        <button id="modeDrop" class="chip on">🏁 نقطة الوصول</button>
+        <button id="gpsBtn" class="chip">موقعي</button>
+      </div>
+      <p class="hint" id="modeHint">اضغط على الخريطة عشان تحدد مكان الوصول</p>
+      <input id="pickupText" placeholder="علامة مميزة عند الركوب (اختياري)">
+      <input id="dropText" placeholder="اسم مكان الوصول (اختياري)">
+      <div id="estimate">حدد نقطة الركوب والوصول</div>
+      <button id="requestBtn" class="primary">اطلب توكتوك</button>
+    </div>
+
+    <div id="ridePanel" class="hidden">
+      <div id="statusText"></div>
+      <div id="driverBox" class="hidden">
+        <div id="driverName"></div>
+        <div id="driverPlate"></div>
+        <div class="row" style="margin:0">
+          <a id="callBtn" class="linkbtn" href="#">📞 اتصال</a>
+          <a id="waBtn" class="linkbtn" href="#" target="_blank" rel="noopener">واتساب</a>
+        </div>
+      </div>
+      <div id="rideInfo"></div>
+      <button id="cancelBtn" class="danger">إلغاء الرحلة</button>
+      <button id="newBtn" class="primary hidden">رحلة جديدة</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden" role="status"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============ إعدادات - غيّر هنا بس ============ */
+const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';   // المفتاح العام: publishable أو anon
+const APP_NAME = 'توكتوك';
+const DEFAULT_CENTER = [30.0444, 31.2357];     // مركز الخريطة لو الموقع مش متاح
+const EMAIL_DOMAIN = 'tuktuk.app';             // إيميل داخلي بيتبني من رقم الموبايل (الزبون مبيشوفوش)
+/* ================================================ */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let me = null, map = null, pickup = null, drop = null;
+let pickupMarker = null, dropMarker = null, driverMarker = null;
+let mode = 'drop', isSignup = false, currentRideId = null, pollTimer = null;
+let settings = { base_fare: 5, per_km: 4, detour_factor: 1.3 };
+
+document.title = APP_NAME;
+$('brandName').textContent = APP_NAME;
+$('appName').textContent = APP_NAME;
+
+function toast(text){
+  const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.add('hidden'), 3500);
+}
+
+/* ---------- الدخول والتسجيل ---------- */
+function setTab(signup){
+  isSignup = signup;
+  $('tabLogin').classList.toggle('on', !signup);
+  $('tabSignup').classList.toggle('on', signup);
+  document.querySelectorAll('.signup').forEach(el => el.classList.toggle('hidden', !signup));
+  $('authBtn').textContent = signup ? 'إنشاء الحساب' : 'دخول';
+  $('password').autocomplete = signup ? 'new-password' : 'current-password';
+  $('authMsg').textContent = '';
+}
+$('tabLogin').onclick = () => setTab(false);
+$('tabSignup').onclick = () => setTab(true);
+
+function arabicError(e){
+  const m = (e && e.message) || '';
+  if (m.includes('Invalid login')) return 'رقم الموبايل أو الباسورد غلط';
+  if (m.includes('already registered')) return 'الرقم ده مسجّل قبل كده، جرّب تدخل';
+  if (m.includes('Password should')) return 'الباسورد لازم يكون 6 حروف على الأقل';
+  if (m.includes('Email not confirmed')) return 'تأكيد الإيميل لسه مفعّل في إعدادات Supabase';
+  return m ? 'مشكلة: ' + m : 'حصل خطأ، حاول تاني';
+}
+
+function normalizePhone(raw){
+  let p = String(raw || '').replace(/\D/g, '');
+  if (p.startsWith('0020')) p = '0' + p.slice(4);
+  else if (p.startsWith('20') && p.length === 12) p = '0' + p.slice(2);
+  else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
+  return /^01[0125]\d{8}$/.test(p) ? p : null;
+}
+
+$('authBtn').onclick = async () => {
+  const password = $('password').value;
+  const name = $('name').value.trim();
+  const phone = normalizePhone($('phone').value);
+  $('authMsg').textContent = '';
+  if (!phone) { $('authMsg').textContent = 'اكتب رقم موبايل مصري صحيح (11 رقم)'; return; }
+  if (!password) { $('authMsg').textContent = 'اكتب الباسورد'; return; }
+  if (isSignup && !name) { $('authMsg').textContent = 'اكتب اسمك'; return; }
+  const email = phone + '@' + EMAIL_DOMAIN;
+  $('authBtn').disabled = true;
+  let res;
+  if (isSignup) {
+    res = await sb.auth.signUp({ email, password, options: { data: { role: 'customer', name, phone } } });
+  } else {
+    res = await sb.auth.signInWithPassword({ email, password });
+  }
+  $('authBtn').disabled = false;
+  if (res.error) { $('authMsg').textContent = arabicError(res.error); return; }
+  if (!res.data.session) { $('authMsg').textContent = 'تم إنشاء الحساب. سجّل دخول دلوقتي.'; setTab(false); return; }
+  start();
+};
+
+$('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+/* ---------- بدء التطبيق ---------- */
+async function start(){
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  me = user;
+  const { data: prof } = await sb.from('profiles').select('role').eq('id', me.id).maybeSingle();
+  if (prof && prof.role !== 'customer') {
+    toast('الحساب ده مش حساب زبون');
+    await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
+  }
+  $('authScreen').classList.add('hidden');
+  $('appScreen').classList.remove('hidden');
+  initMap();
+  loadSettings();
+  locate();
+  poll();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(poll, 4000);
+}
+
+async function loadSettings(){
+  const { data } = await sb.from('settings').select('*').eq('id', 1).maybeSingle();
+  if (data) { settings = data; updateEstimate(); }
+}
+
+/* ---------- الخريطة ---------- */
+function initMap(){
+  if (map) { setTimeout(() => map.invalidateSize(), 100); return; }
+  map = L.map('map', { zoomControl: false }).setView(DEFAULT_CENTER, 14);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, attribution: '© OpenStreetMap'
+  }).addTo(map);
+  map.on('click', e => setPoint(mode, e.latlng));
+  setTimeout(() => map.invalidateSize(), 200);
+}
+
+function dot(color){ return { radius: 11, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 }; }
+
+function setPoint(kind, latlng){
+  if (!ridePanelHidden()) return;           // مفيش تعديل أثناء الرحلة
+  if (kind === 'pickup') {
+    pickup = latlng;
+    if (pickupMarker) pickupMarker.setLatLng(latlng); else pickupMarker = L.circleMarker(latlng, dot('#1F9D55')).addTo(map);
+  } else {
+    drop = latlng;
+    if (dropMarker) dropMarker.setLatLng(latlng); else dropMarker = L.circleMarker(latlng, dot('#D64545')).addTo(map);
+  }
+  updateEstimate();
+}
+
+function setMode(m){
+  mode = m;
+  $('modePickup').classList.toggle('on', m === 'pickup');
+  $('modeDrop').classList.toggle('on', m === 'drop');
+  $('modeHint').textContent = m === 'pickup'
+    ? 'اضغط على الخريطة عشان تحدد مكان الركوب'
+    : 'اضغط على الخريطة عشان تحدد مكان الوصول';
+}
+$('modePickup').onclick = () => setMode('pickup');
+$('modeDrop').onclick = () => setMode('drop');
+$('gpsBtn').onclick = () => locate();
+
+function locate(){
+  if (!navigator.geolocation) { setMode('pickup'); toast('المتصفح مش بيدعم تحديد الموقع، حدد الركوب من الخريطة'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const ll = L.latLng(pos.coords.latitude, pos.coords.longitude);
+    setPoint('pickup', ll);
+    map.setView(ll, 16);
+    setMode('drop');
+  }, () => {
+    setMode('pickup');
+    toast('مش قادر أحدد موقعك. فعّل الموقع أو حدد الركوب من الخريطة');
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+function haversine(a, b){
+  const R = 6371, rad = x => x * Math.PI / 180;
+  const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function updateEstimate(){
+  if (!pickup || !drop) { $('estimate').textContent = 'حدد نقطة الركوب والوصول'; return; }
+  const d = haversine(pickup, drop) * Number(settings.detour_factor);
+  const price = Math.ceil(Number(settings.base_fare) + Number(settings.per_km) * d);
+  $('estimate').textContent = `المسافة تقريباً ${d.toFixed(1)} كم، والسعر ${price} جنيه`;
+}
+
+/* ---------- طلب رحلة ---------- */
+$('requestBtn').onclick = async () => {
+  if (!pickup || !drop) { toast('حدد نقطة الركوب والوصول الأول'); return; }
+  $('requestBtn').disabled = true;
+  const { data, error } = await sb.rpc('request_ride', {
+    p_pickup_lat: pickup.lat, p_pickup_lng: pickup.lng, p_pickup_text: $('pickupText').value.trim() || null,
+    p_drop_lat: drop.lat, p_drop_lng: drop.lng, p_drop_text: $('dropText').value.trim() || null
+  });
+  $('requestBtn').disabled = false;
+  if (error) {
+    if (error.message.includes('active ride')) { currentRideId = null; poll(); }
+    else toast('مقدرناش نبعت الطلب: ' + error.message);
+    return;
+  }
+  currentRideId = data.id;
+  poll();
+};
+
+/* ---------- متابعة الرحلة ---------- */
+function ridePanelHidden(){ return $('ridePanel').classList.contains('hidden'); }
+
+const STATUS_TEXT = {
+  requested: 'بندوّر على أقرب سواق...',
+  accepted: 'السواق قبل طلبك وفي الطريق ليك',
+  arrived: 'السواق وصل عندك',
+  started: 'أنت في الرحلة دلوقتي',
+  completed: 'وصلت بالسلامة 🎉',
+  cancelled: 'الرحلة اتلغت'
+};
+
+async function poll(){
+  if (!me) return;
+  let ride = null;
+  if (currentRideId) {
+    const { data } = await sb.from('rides').select('*').eq('id', currentRideId).maybeSingle();
+    ride = data;
+  } else {
+    const { data } = await sb.from('rides').select('*').eq('customer_id', me.id)
+      .in('status', ['requested', 'accepted', 'arrived', 'started'])
+      .order('created_at', { ascending: false }).limit(1);
+    ride = data && data[0];
+    if (ride) currentRideId = ride.id;
+  }
+  renderRide(ride);
+}
+
+function waNumber(phone){
+  let p = String(phone || '').replace(/\D/g, '');
+  if (p.startsWith('00')) p = p.slice(2);
+  if (p.startsWith('0')) p = '20' + p.slice(1);
+  return p;
+}
+
+async function renderRide(ride){
+  if (!ride) {
+    $('ridePanel').classList.add('hidden');
+    $('bookPanel').classList.remove('hidden');
+    if (driverMarker) { map.removeLayer(driverMarker); driverMarker = null; }
+    return;
+  }
+  $('bookPanel').classList.add('hidden');
+  $('ridePanel').classList.remove('hidden');
+  $('statusText').textContent = STATUS_TEXT[ride.status] || ride.status;
+
+  const finished = ride.status === 'completed' || ride.status === 'cancelled';
+  let info = `${ride.price} جنيه، كاش للسواق`;
+  if (ride.drop_text) info += ` • إلى: ${ride.drop_text}`;
+  if (ride.status === 'cancelled') info = '';
+  $('rideInfo').textContent = info;
+  $('cancelBtn').classList.toggle('hidden', !['requested', 'accepted', 'arrived'].includes(ride.status));
+  $('newBtn').classList.toggle('hidden', !finished);
+
+  // بيانات السواق
+  if (ride.driver_id && !finished) {
+    const { data: d } = await sb.from('profiles').select('name,phone,plate_number,lat,lng').eq('id', ride.driver_id).maybeSingle();
+    if (d) {
+      $('driverBox').classList.remove('hidden');
+      $('driverName').textContent = d.name || 'السواق';
+      $('driverPlate').textContent = d.plate_number ? 'رقم التوكتوك: ' + d.plate_number : '';
+      $('callBtn').href = 'tel:' + (d.phone || '');
+      $('waBtn').href = 'https://wa.me/' + waNumber(d.phone);
+      if (d.lat != null && d.lng != null) {
+        const ll = L.latLng(d.lat, d.lng);
+        if (driverMarker) driverMarker.setLatLng(ll);
+        else driverMarker = L.circleMarker(ll, { radius: 12, color: '#fff', weight: 3, fillColor: '#F7B500', fillOpacity: 1 }).addTo(map);
+      }
+    }
+  } else {
+    $('driverBox').classList.add('hidden');
+    if (driverMarker) { map.removeLayer(driverMarker); driverMarker = null; }
+  }
+}
+
+$('cancelBtn').onclick = async () => {
+  if (!currentRideId) return;
+  if (!confirm('متأكد إنك عايز تلغي الرحلة؟')) return;
+  const { error } = await sb.rpc('set_ride_status', { p_ride_id: currentRideId, p_status: 'cancelled' });
+  if (error) toast(error.message);
+  poll();
+};
+
+$('newBtn').onclick = () => {
+  currentRideId = null;
+  if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
+  drop = null;
+  $('dropText').value = '';
+  updateEstimate();
+  setMode('drop');
+  renderRide(null);
+  locate();
+};
+
+/* ---------- تشغيل ---------- */
+sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+</script>
+</body>
+</html>
