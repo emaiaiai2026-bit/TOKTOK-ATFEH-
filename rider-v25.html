@@ -234,6 +234,7 @@ const $ = id => document.getElementById(id);
 let me = null, map = null, pickup = null, drop = null;
 let pickupMarker = null, dropMarker = null, driverMarker = null, routeLayer = null;
 let routeDistanceKm = null, routeStatus = 'idle', routeToken = 0;
+let selectedDestinationText = '';
 let lastGeocodeAt = 0;
 const destinationCache = {};
 let mode = 'drop', isSignup = false, currentRideId = null;
@@ -510,13 +511,15 @@ function haversine(a, b){
 
 function updateEstimate(){
   if (!pickup || !drop) {
-    $('estDist').textContent = 'اختار مكان الوصول';
+    $('estDist').textContent = dropTextHasQuery() ? 'اختار مكان من نتائج البحث أو حدده على الخريطة' : 'اختار مكان الوصول';
     $('estPrice').classList.add('hidden');
+    $('requestBtn').disabled = true;
     return;
   }
-  if (routeStatus === 'loading') {
+  if (routeStatus === 'loading' || routeStatus === 'idle') {
     $('estDist').textContent = 'جاري حساب مسافة الطريق...';
     $('estPrice').classList.add('hidden');
+    $('requestBtn').disabled = true;
     return;
   }
   if (routeStatus === 'ready' && Number.isFinite(routeDistanceKm)) {
@@ -529,6 +532,22 @@ function updateEstimate(){
   }
   $('estPrice').textContent = 'حسب الاتفاق';
   $('estPrice').classList.remove('hidden');
+  $('requestBtn').disabled = false;
+}
+
+function dropTextHasQuery(){ return $('dropText').value.trim().length > 0; }
+
+function clearUnconfirmedDestination(){
+  if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
+  if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
+  routeToken++;
+  drop = null;
+  dropAddr = null;
+  selectedDestinationText = '';
+  routeDistanceKm = null;
+  routeStatus = 'idle';
+  $('dropLabel').textContent = 'اختار مكان الوصول من نتائج البحث أو الخريطة';
+  updateEstimate();
 }
 
 async function refreshRoadRoute(){
@@ -578,7 +597,9 @@ async function searchDestination(){
   $('destinationResults').classList.remove('hidden');
   $('destinationResults').textContent = 'بندور على المكان...';
   try {
-    let results = destinationCache[key];
+    const locationKey = pickup ? pickup.lat.toFixed(2) + ',' + pickup.lng.toFixed(2) : 'no-location';
+    const cacheKey = key + '|' + locationKey;
+    let results = destinationCache[cacheKey];
     if (!results) {
       const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
       if (wait) await new Promise(resolve => setTimeout(resolve, wait));
@@ -587,7 +608,7 @@ async function searchDestination(){
         q: query + ', Egypt',
         format: 'jsonv2',
         addressdetails: '1',
-        limit: '5',
+        limit: '10',
         countrycodes: 'eg',
         'accept-language': 'ar'
       });
@@ -597,7 +618,10 @@ async function searchDestination(){
       const response = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString());
       if (!response.ok) throw new Error('place search unavailable');
       results = await response.json();
-      destinationCache[key] = results;
+      destinationCache[cacheKey] = results;
+    }
+    if (pickup && results.length > 1) {
+      results.sort((a, b) => haversine(pickup, L.latLng(Number(a.lat), Number(a.lon))) - haversine(pickup, L.latLng(Number(b.lat), Number(b.lon))));
     }
     const box = $('destinationResults');
     box.replaceChildren();
@@ -613,12 +637,14 @@ async function searchDestination(){
       const name = document.createElement('b');
       name.textContent = title;
       const address = document.createElement('small');
-      address.textContent = place.display_name || '';
+      const awayKm = pickup ? haversine(pickup, L.latLng(Number(place.lat), Number(place.lon))) : null;
+      address.textContent = (place.display_name || '') + (awayKm !== null ? ' • يبعد ' + awayKm.toFixed(1) + ' كم عن موقع الركوب' : '');
       button.append(name, address);
       button.addEventListener('click', () => {
         const point = L.latLng(Number(place.lat), Number(place.lon));
         setPoint('drop', point, title, place.display_name || title);
         $('dropText').value = place.display_name || title;
+        selectedDestinationText = $('dropText').value.trim();
         box.classList.add('hidden');
         focusOn(point, 17);
         toast('تم تحديد مكان الوصول على الخريطة');
@@ -634,6 +660,12 @@ async function searchDestination(){
   }
 }
 $('destinationSearchBtn').addEventListener('click', searchDestination);
+$('dropText').addEventListener('input', () => {
+  if (selectedDestinationText && $('dropText').value.trim() !== selectedDestinationText) {
+    clearUnconfirmedDestination();
+    $('destinationResults').classList.add('hidden');
+  }
+});
 $('dropText').addEventListener('keydown', event => {
   if (event.key === 'Enter') { event.preventDefault(); searchDestination(); }
 });
@@ -818,13 +850,14 @@ $('cancelBtn').onclick = async () => {
 };
 
 $('newBtn').onclick = () => {
-  currentRideId = null; fittedRideId = null; drop = null; dropAddr = null;
+  currentRideId = null; fittedRideId = null; drop = null; dropAddr = null; selectedDestinationText = '';
   routeToken++;
   routeDistanceKm = null;
   routeStatus = 'idle';
   if (routeLayer) { map.removeLayer(routeLayer); routeLayer = null; }
   if (dropMarker) { map.removeLayer(dropMarker); dropMarker = null; }
   $('dropText').value = '';
+  selectedDestinationText = '';
   $('destinationResults').classList.add('hidden');
   $('dropLabel').textContent = 'اكتب اسم المكان أو اختاره من الخريطة';
   updateEstimate();
