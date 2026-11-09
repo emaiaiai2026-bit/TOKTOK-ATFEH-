@@ -299,6 +299,7 @@ async function start(){
     .select('role,is_driver,is_approved,is_blocked,vehicle_type')
     .eq('id', me.id).maybeSingle();
   if (profileError || !prof) {
+    $('authScreen').classList.remove('hidden');
     $('authMsg').textContent = 'مقدرناش نقرأ بيانات الحساب. جرّب تحديث الصفحة.';
     return;
   }
@@ -307,6 +308,7 @@ async function start(){
     await sb.auth.signOut(); setTimeout(() => location.reload(), 1500); return;
   }
   if (prof.is_blocked) {
+    $('authScreen').classList.remove('hidden');
     $('authMsg').textContent = 'الحساب موقوف. تواصل مع الإدارة.';
     return;
   }
@@ -315,6 +317,7 @@ async function start(){
     return;
   }
   if (prof.role !== 'customer' && prof.role !== 'driver') {
+    $('authScreen').classList.remove('hidden');
     $('authMsg').textContent = 'نوع الحساب غير مؤهل لوضع السائق.';
     return;
   }
