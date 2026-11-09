@@ -1,0 +1,2 @@
+Harmless Cloudflare Pages redeployment trigger.
+This file exists only to trigger a fresh deployment from the preview directory.
