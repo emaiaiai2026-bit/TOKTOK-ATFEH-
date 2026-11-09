@@ -743,7 +743,15 @@ async function loadVehicleTypes(){
 }
 
 /* ---------- تشغيل ---------- */
-sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+// All authentication happens once on the app home screen. Service pages never show legacy phone/password login.
+$('authScreen').classList.add('hidden');
+sb.auth.getSession().then(({ data, error }) => {
+  if (error || !data.session) {
+    location.replace('https://emaiaiai2026-bit.github.io/TOKTOK-ATFEH-/preview/');
+    return;
+  }
+  start();
+});
 </script>
 </body>
 </html>
