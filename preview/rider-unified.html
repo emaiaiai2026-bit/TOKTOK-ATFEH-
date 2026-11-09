@@ -604,9 +604,13 @@ async function searchDestination(){
       const wait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
       if (wait) await new Promise(resolve => setTimeout(resolve, wait));
       lastGeocodeAt = Date.now();
-      const cleanQuery = query.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      const cleanQuery = normalize(query).replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+      // Remove generic mosque words so "مسجد أبو مشهور" also matches a map label stored as "أبو مشهور".
+      const tokens = cleanQuery.split(/\s+/).filter(token => token && !['مسجد','جامع','mosque'].includes(token));
+      if (wantsMosque && !tokens.length) throw new Error('اكتب اسم المسجد بعد كلمة مسجد');
+      const regex = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\      const cleanQuery = query.replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
       const tokens = cleanQuery.split(/\s+/).filter(Boolean);
-      const regex = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+      const regex = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');')).join('.*');
       const candidates = [];
       const add = item => {
         if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lon))) return;
