@@ -707,7 +707,9 @@ async function searchDestination(){
             (payload.elements || []).forEach(element => {
               const t = element.tags || {};
               const point = element.type === 'node' ? {lat:element.lat,lon:element.lon} : element.center;
-              const isMosque = t.building === 'mosque' || (t.amenity === 'place_of_worship' && (String(t.religion || '').toLowerCase() === 'muslim' || /مسجد|جامع|mosque/i.test([t.name,t['name:ar'],t.official_name].filter(Boolean).join(' '))));
+              const poiName = [t.name,t['name:ar'],t.official_name].filter(Boolean).join(' ');
+              const looksLikeStreet = /حارة|شارع|طريق|ممر|منطقة|نجع|قرية/i.test(poiName);
+              const isMosque = !looksLikeStreet && (t.building === 'mosque' || (t.amenity === 'place_of_worship' && (String(t.religion || '').toLowerCase() === 'muslim' || /مسجد|جامع|mosque/i.test(poiName))));
               if (!point || !isMosque) return;
               const names = [t.name,t['name:ar'],t.alt_name,t.official_name,t.loc_name,t.short_name,t['name:en']].filter(Boolean);
               const searchable = normalize(names.join(' '));
@@ -751,7 +753,8 @@ async function searchDestination(){
                 || String(extra.building || '').toLowerCase() === 'mosque'
                 || (place.class === 'amenity' && place.type === 'place_of_worship'
                   && (String(extra.religion || '').toLowerCase() === 'muslim'
-                    || /مسجد|جامع|mosque/i.test([place.name, place.namedetails && place.namedetails.name, place.display_name].filter(Boolean).join(' '))));
+                    || /مسجد|جامع|mosque/i.test([place.name, place.namedetails && place.namedetails.name].filter(Boolean).join(' '))))
+                && !/حارة|شارع|طريق|ممر|منطقة|نجع|قرية/i.test([place.name, place.namedetails && place.namedetails.name].filter(Boolean).join(' '));
               if (wantsMosque && !isPoi) return;
               add({lat:place.lat,lon:place.lon,name:place.name || (place.display_name || '').split(',')[0],
                 display_name:place.display_name,isPoi});
