@@ -419,23 +419,35 @@ const addrToken = { pickup: 0, drop: 0 };
 const addrTimer = {};
 
 async function lookupAddress(ll){
-  const key = ll.lat.toFixed(4) + ',' + ll.lng.toFixed(4);
+  const key = ll.lat.toFixed(5) + ',' + ll.lng.toFixed(5);
   if (addrCache[key] !== undefined) return addrCache[key];
+  const pickRoad = a => a.road || a.residential || a.pedestrian || a.footway || a.path || a.street || a.cycleway || a.service || '';
+  const pickArea = a => a.suburb || a.neighbourhood || a.quarter || a.village || a.town || a.city_district || a.city || a.county || '';
   try {
-    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=ar&lat='
-      + ll.lat + '&lon=' + ll.lng);
-    if (!r.ok) return null;
-    const j = await r.json();
-    const a = j.address || {};
-    const road = a.road || a.pedestrian || a.footway || a.neighbourhood || '';
-    const area = a.suburb || a.village || a.town || a.city_district || a.city || a.county || '';
-    let text = [road, area].filter(Boolean).join('، ');
-    if (!text && j.display_name) text = j.display_name.split(',').slice(0, 2).join('،').trim();
-    addrCache[key] = text || null;
-    return addrCache[key];
-  } catch (e) { return null; }
+    const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&accept-language=ar&lat=' + ll.lat + '&lon=' + ll.lng;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (r.ok) {
+      const j = await r.json();
+      const a = j.address || {};
+      const road = pickRoad(a);
+      const area = pickArea(a);
+      if (road) { const text = [road, area].filter(Boolean).join('، '); addrCache[key] = text; return text; }
+    }
+  } catch (e) { console.warn('Nominatim reverse lookup failed:', e); }
+  try {
+    const url = 'https://photon.komoot.io/reverse?lat=' + ll.lat + '&lon=' + ll.lng + '&lang=ar';
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (r.ok) {
+      const j = await r.json();
+      const p = j.features && j.features[0] && j.features[0].properties || {};
+      const road = p.street || p.name || '';
+      const area = p.district || p.locality || p.city || p.county || '';
+      if (road) { const text = [road, area].filter(Boolean).join('، '); addrCache[key] = text; return text; }
+    }
+  } catch (e) { console.warn('Photon reverse lookup failed:', e); }
+  addrCache[key] = null;
+  return null;
 }
-
 function resolveAddress(kind, ll, fallback){
   const token = ++addrToken[kind];
   clearTimeout(addrTimer[kind]);
