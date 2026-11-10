@@ -87,9 +87,8 @@
 <div id="authScreen">
   <div class="hero"><h1>لوحة الإدارة</h1><p>خدماتنا</p></div>
   <div class="authsheet">
-    <input id="phone" placeholder="رقم موبايل الإدارة" inputmode="tel" autocomplete="tel" aria-label="رقم الموبايل">
-    <input id="password" type="password" placeholder="الباسورد" autocomplete="current-password" aria-label="الباسورد">
-    <button id="authBtn" class="btn">دخول</button>
+    <p>الدخول مخصص لحسابات الإدارة المعتمدة فقط.</p>
+    <button id="googleAdminBtn" class="btn" type="button">المتابعة باستخدام Google</button>
     <p id="authMsg" class="msg" role="alert"></p>
   </div>
 </div>
@@ -162,7 +161,6 @@
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const DEFAULT_CENTER = [29.0661, 31.0994];
-const EMAIL_DOMAIN = 'tuktuk.app';
 const FRESH_MS = 120000;          // السواق اللي موقعه أحدث من دقيقتين بيتحسب "متصل"
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -183,26 +181,33 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-/* ---------- الدخول ---------- */
-$('authBtn').onclick = async () => {
-  const phone = normalizePhone($('phone').value), password = $('password').value;
+/* ---------- دخول الإدارة بحساب Google الموحد ---------- */
+$('googleAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
-  if (!phone || !password) { $('authMsg').textContent = 'اكتب رقم الموبايل والباسورد'; return; }
-  $('authBtn').disabled = true;
-  const { error } = await sb.auth.signInWithPassword({ email: phone + '@' + EMAIL_DOMAIN, password });
-  $('authBtn').disabled = false;
-  if (error) { $('authMsg').textContent = error.message.includes('Invalid login') ? 'الرقم أو الباسورد غلط' : error.message; return; }
-  start();
+  $('googleAdminBtn').disabled = true;
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo }
+  });
+  if (error) {
+    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
+    $('googleAdminBtn').disabled = false;
+  }
 };
-$('logoutBtn').onclick = async () => { await sb.auth.signOut(); location.reload(); };
+$('logoutBtn').onclick = async () => {
+  await sb.auth.signOut();
+  location.replace('./');
+};
 
 async function start(){
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return;
-  const { data: prof } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  if (!prof || prof.role !== 'admin') {
-    $('authMsg').textContent = 'الحساب ده مش حساب إدارة';
-    await sb.auth.signOut(); return;
+  const { data: { user }, error: userError } = await sb.auth.getUser();
+  if (userError || !user) return;
+  const { data: prof, error: profileError } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (profileError || !prof || prof.role !== 'admin') {
+    $('authMsg').textContent = 'الحساب ده مش حساب إدارة. الدخول مخصص للمسؤول المعتمد.';
+    await sb.auth.signOut();
+    return;
   }
   $('authScreen').classList.add('hidden');
   $('app').classList.remove('hidden');
@@ -504,7 +509,10 @@ $('saveSettings').onclick = async () => {
   toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
 };
 
-sb.auth.getSession().then(({ data }) => { if (data.session) start(); });
+sb.auth.getSession().then(({ data, error }) => {
+  if (error) { $('authMsg').textContent = 'تعذر التحقق من جلسة الدخول. حدّث الصفحة وحاول مرة أخرى.'; return; }
+  if (data.session) start();
+});
 </script>
 </body>
 </html>
