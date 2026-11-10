@@ -226,7 +226,7 @@ window.__loadExternalScripts = function (groups) {
       </div>
       <div id="destinationResults" class="hidden" aria-live="polite"></div>
       <div class="fields">
-        <input id="pickupText" placeholder="علامة مميزة عند الركوب (اختياري)" aria-label="علامة مميزة عند الركوب">
+        <input id="pickupText" placeholder="مكاني (بيتحدد تلقائياً عند الضغط على موقعي)" aria-label="مكاني">
       </div>
       <div class="est"><div id="estDist">حدد الوجهة</div><div class="chip hidden" id="estPrice"></div></div>
       <button id="requestBtn" class="btn" disabled>اطلب</button>
@@ -456,7 +456,13 @@ function resolveAddress(kind, ll, fallback){
     if (token !== addrToken[kind]) return;          // اتغيرت النقطة في الوقت ده
     const shown = text || fallback;
     if (kind === 'pickup') {
-      pickupAddr = text; $('pickupLabel').textContent = shown;
+      pickupAddr = text;
+      $('pickupLabel').textContent = shown;
+      const pickupField = $('pickupText');
+      if (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value) {
+        pickupField.value = shown;
+        pickupField.dataset.autoAddress = shown;
+      }
       if (pickupMarker && pickupMarker.getTooltip()) pickupMarker.setTooltipContent(shown);
     } else {
       dropAddr = text; $('dropLabel').textContent = shown;
@@ -474,7 +480,14 @@ function setPoint(kind, latlng, label, resolvedAddress, isPoi = false){
     if (pickupMarker.getTooltip()) pickupMarker.setTooltipContent(label || 'نقطة الركوب');
     pickupAddr = resolvedAddress || null;
     $('pickupSmall').textContent = label ? 'من • ' + label : 'من';
-    if (resolvedAddress) $('pickupLabel').textContent = label || resolvedAddress;
+    if (resolvedAddress) {
+      $('pickupLabel').textContent = resolvedAddress;
+      const pickupField = $('pickupText');
+      if (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value) {
+        pickupField.value = resolvedAddress;
+        pickupField.dataset.autoAddress = resolvedAddress;
+      }
+    }
     else {
       $('pickupLabel').textContent = 'جاري تحديد اسم المنطقة...';
       resolveAddress('pickup', latlng, label || 'تم تحديد نقطة الركوب');
