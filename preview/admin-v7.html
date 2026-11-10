@@ -87,8 +87,12 @@
 <div id="authScreen">
   <div class="hero"><h1>لوحة الإدارة</h1><p>خدماتنا</p></div>
   <div class="authsheet">
-    <p>الدخول مخصص لحسابات الإدارة المعتمدة فقط.</p>
-    <button id="googleAdminBtn" class="btn" type="button">المتابعة باستخدام Google</button>
+    <p>دخول خاص بمدير التطبيق فقط.</p>
+    <label for="adminPhone">رقم الهاتف</label>
+    <input id="adminPhone" type="tel" inputmode="tel" autocomplete="username" placeholder="01xxxxxxxxx" maxlength="15">
+    <label for="adminPassword">كلمة المرور</label>
+    <input id="adminPassword" type="password" autocomplete="current-password" placeholder="كلمة مرور الإدارة">
+    <button id="phoneAdminBtn" class="btn" type="button">دخول الإدارة</button>
     <p id="authMsg" class="msg" role="alert"></p>
   </div>
 </div>
@@ -181,23 +185,27 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-/* ---------- دخول الإدارة بحساب Google الموحد ---------- */
-$('googleAdminBtn').onclick = async () => {
+/* ---------- دخول الإدارة برقم الهاتف وكلمة المرور ---------- */
+$('phoneAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
-  $('googleAdminBtn').disabled = true;
-  const redirectTo = window.location.origin + window.location.pathname;
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo }
-  });
+  const phone = normalizePhone($('adminPhone').value);
+  const password = $('adminPassword').value;
+  if (!phone) { $('authMsg').textContent = 'اكتب رقم هاتف مصري صحيح.'; return; }
+  if (!password) { $('authMsg').textContent = 'اكتب كلمة المرور.'; return; }
+  $('phoneAdminBtn').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ phone, password });
   if (error) {
-    $('authMsg').textContent = 'تعذر بدء تسجيل Google: ' + error.message;
-    $('googleAdminBtn').disabled = false;
+    $('authMsg').textContent = 'رقم الهاتف أو كلمة المرور غير صحيحة، أو حساب الهاتف غير مفعّل.';
+    $('phoneAdminBtn').disabled = false;
+    return;
   }
+  await start();
+  $('phoneAdminBtn').disabled = false;
 };
+$('adminPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('phoneAdminBtn').click(); });
 $('logoutBtn').onclick = async () => {
   await sb.auth.signOut();
-  location.replace('./');
+  location.replace('./admin-v7.html');
 };
 
 async function start(){
@@ -205,7 +213,7 @@ async function start(){
   if (userError || !user) return;
   const { data: prof, error: profileError } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
   if (profileError || !prof || prof.role !== 'admin') {
-    $('authMsg').textContent = 'الحساب ده مش حساب إدارة. الدخول مخصص للمسؤول المعتمد.';
+    $('authMsg').textContent = 'بيانات الدخول صحيحة لكن الحساب غير مصرح له بدخول الإدارة.';
     await sb.auth.signOut();
     return;
   }
@@ -509,10 +517,7 @@ $('saveSettings').onclick = async () => {
   toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
 };
 
-sb.auth.getSession().then(({ data, error }) => {
-  if (error) { $('authMsg').textContent = 'تعذر التحقق من جلسة الدخول. حدّث الصفحة وحاول مرة أخرى.'; return; }
-  if (data.session) start();
-});
+// لا نفتح لوحة الإدارة بجلسة Google أو جلسة التطبيق؛ يلزم إدخال هاتف وكلمة مرور الإدارة هنا.
 </script>
 </body>
 </html>
