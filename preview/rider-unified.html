@@ -687,16 +687,11 @@ async function searchDestination(){
         if (!candidates.some(old => old._id === id)) candidates.push({...item, _id:id});
       };
 
-      // 1) Search named map features first. Mosque results must be actual worship-place features.
+      // 1) Search mosque features in the nearby map data, then match Arabic names locally.
+      // This avoids rejecting valid records because of small spelling/order differences in OSM tags.
       if (wantsMosque) {
         const lat = Number(center.lat.toFixed(5)), lon = Number(center.lng.toFixed(5));
-        const tags = ['name','name:ar','alt_name','official_name','loc_name','short_name'];
-        const selectors = [];
-        tags.forEach(tag => {
-          selectors.push(`nwr(around:25000,${lat},${lon})["amenity"="place_of_worship"]["${tag}"~"${regex}",i];`);
-          selectors.push(`nwr(around:25000,${lat},${lon})["building"="mosque"]["${tag}"~"${regex}",i];`);
-        });
-        const overpassQuery = '[out:json][timeout:20];(' + selectors.join('') + ');out center tags;';
+        const overpassQuery = '[out:json][timeout:20];(nwr(around:8000,' + lat + ',' + lon + ')["amenity"="place_of_worship"];nwr(around:8000,' + lat + ',' + lon + ')["building"="mosque"];);out center tags;';
         for (const endpoint of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']) {
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 18000);
@@ -713,11 +708,16 @@ async function searchDestination(){
               const t = element.tags || {};
               const point = element.type === 'node' ? {lat:element.lat,lon:element.lon} : element.center;
               if (!point || (t.amenity !== 'place_of_worship' && t.building !== 'mosque')) return;
+              const names = [t.name,t['name:ar'],t.alt_name,t.official_name,t.loc_name,t.short_name,t['name:en']].filter(Boolean);
+              const searchable = normalize(names.join(' '));
+              const wanted = tokens.map(normalize).filter(Boolean);
+              const matches = wanted.length && wanted.every(token => searchable.includes(token));
+              if (!matches) return;
               const title = t.name || t['name:ar'] || t.official_name || t.alt_name || query;
               add({lat:point.lat,lon:point.lon,name:title,
                 display_name:[title,t['addr:street'],t['addr:place'],t['addr:neighbourhood'],t['addr:suburb'],t['addr:city'] || 'أطفيح',t['addr:state'] || 'الجيزة'].filter(Boolean).join('، '),isPoi:true});
             });
-            break;
+            if (candidates.length) break;
           } catch(error) { console.warn('Overpass endpoint failed:', endpoint, error); }
           finally { clearTimeout(timer); }
         }
@@ -784,9 +784,21 @@ async function searchDestination(){
     results.sort((a,b)=>haversine(origin,L.latLng(Number(a.lat),Number(a.lon)))-haversine(origin,L.latLng(Number(b.lat),Number(b.lon))));
     box.replaceChildren();
     if (!results.length) {
-      box.textContent = wantsMosque
-        ? 'ملقيناش المسجد المسجل بالاسم ده قريب من المنطقة. جرّب الاسم مع اسم القرية أو المنطقة.'
-        : 'ملقيناش المكان بالاسم ده. جرّب اسم المكان مع المنطقة أو اسم الشارع.';
+      box.replaceChildren();
+      const message = document.createElement('small');
+      message.textContent = wantsMosque
+        ? 'المكان مش ظاهر في بيانات الخرائط بالاسم ده. تقدر تحدده بنفسك على الخريطة.'
+        : 'ملقيناش المكان بالاسم ده. تقدر تحدده بنفسك على الخريطة.';
+      const manualButton = document.createElement('button');
+      manualButton.type = 'button';
+      manualButton.className = 'destination-result';
+      manualButton.textContent = 'تحديد المكان يدويًا على الخريطة';
+      manualButton.addEventListener('click', () => {
+        setMode('drop');
+        box.classList.add('hidden');
+        toast('اضغط على موقع المكان الصحيح في الخريطة لتحديده');
+      });
+      box.append(message, manualButton);
       return;
     }
     results.forEach(place => {
