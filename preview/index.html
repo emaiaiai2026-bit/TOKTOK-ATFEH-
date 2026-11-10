@@ -8,15 +8,20 @@
     location.replace('https://toktok-atfeh-preview.pages.dev' + location.pathname + location.search + location.hash);
   }
 })();
-window.__loadExternalScripts = function (urls) {
-  return urls.reduce(function (chain, url) {
+window.__loadExternalScripts = function (groups) {
+  return groups.reduce(function (chain, candidates) {
     return chain.then(function () {
       return new Promise(function (resolve, reject) {
-        var script = document.createElement('script');
-        script.src = url;
-        script.onload = resolve;
-        script.onerror = function () { script.remove(); reject(new Error('external script failed')); };
-        document.head.appendChild(script);
+        var index = 0;
+        function tryNext() {
+          if (index >= candidates.length) return reject(new Error('all CDN sources failed'));
+          var script = document.createElement('script');
+          script.src = candidates[index++];
+          script.onload = resolve;
+          script.onerror = function () { script.remove(); tryNext(); };
+          document.head.appendChild(script);
+        }
+        tryNext();
       });
     });
   }, Promise.resolve());
@@ -156,10 +161,10 @@ h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bot
 
 <div id="toast" hidden role="status"></div>
 
-<script>window.__loadExternalScripts([
+<script>window.__loadExternalScripts([[
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
   "https://unpkg.com/@supabase/supabase-js@2"
-]).then(function () {
+]]).then(function () {
 
 const SUPABASE_URL = "https://nhxenquczoaxytxskdsa.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT";
