@@ -431,7 +431,8 @@ async function lookupAddress(ll){
       const a = j.address || {};
       const road = pickRoad(a);
       const area = pickArea(a);
-      if (road) { const text = [road, area].filter(Boolean).join('، '); addrCache[key] = text; return text; }
+      const place = road || area || a.state || a.country || '';
+      if (place) { const text = [road, area].filter(Boolean).join('، ') || place; addrCache[key] = text; return text; }
     }
   } catch (e) { console.warn('Nominatim reverse lookup failed:', e); }
   try {
@@ -441,8 +442,9 @@ async function lookupAddress(ll){
       const j = await r.json();
       const p = j.features && j.features[0] && j.features[0].properties || {};
       const road = p.street || p.name || '';
-      const area = p.district || p.locality || p.city || p.county || '';
-      if (road) { const text = [road, area].filter(Boolean).join('، '); addrCache[key] = text; return text; }
+      const area = p.district || p.locality || p.neighbourhood || p.city || p.county || '';
+      const place = road || area || p.state || '';
+      if (place) { const text = [road, area].filter(Boolean).join('، ') || place; addrCache[key] = text; return text; }
     }
   } catch (e) { console.warn('Photon reverse lookup failed:', e); }
   addrCache[key] = null;
@@ -459,9 +461,9 @@ function resolveAddress(kind, ll, fallback){
       pickupAddr = text;
       $('pickupLabel').textContent = shown;
       const pickupField = $('pickupText');
-      if (text && (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value)) {
-        pickupField.value = text;
-        pickupField.dataset.autoAddress = text;
+      if (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value) {
+        pickupField.value = shown;
+        pickupField.dataset.autoAddress = shown;
       }
       if (pickupMarker && pickupMarker.getTooltip()) pickupMarker.setTooltipContent(shown);
     } else {
