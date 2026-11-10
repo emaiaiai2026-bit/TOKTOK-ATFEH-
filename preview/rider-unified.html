@@ -668,8 +668,13 @@ async function searchDestination(){
       lastGeocodeAt = Date.now();
       const cleanQuery = normalize(query).replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
       // Remove generic mosque words so "مسجد أبو مشهور" also matches a map label stored as "أبو مشهور".
-      const tokens = cleanQuery.split(/\s+/).filter(token => token && !['مسجد','جامع','mosque'].includes(token));
+      // استبعد اسم المحافظة/المركز من مطابقة اسم المسجد؛ المستخدم قد يكتب "بأطفيح".
+      const tokens = cleanQuery.split(/\s+/).filter(token =>
+        token &&
+        !['مسجد','جامع','mosque','اطفيح','باطفيح','الجيزه','جيزه','مصر'].includes(token)
+      );
       if (wantsMosque && !tokens.length) throw new Error('اكتب اسم المسجد بعد كلمة مسجد');
+      const nameQuery = tokens.join(' ');
       const regex = tokens.map(token => Array.from(token).map(ch => {
         const variants = { 'ا':'[اأإآٱ]', 'ه':'[هة]', 'ي':'[يىئ]', 'و':'[وؤ]' };
         return variants[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -721,7 +726,7 @@ async function searchDestination(){
       // 2) Nominatim fallback and normal place search, with a bounded local search area.
       if (!candidates.length || wantsMosque) {
         const queryVariants = wantsMosque
-          ? [...new Set([query, cleanQuery, cleanQuery + ' شارع المؤسسة أطفيح', cleanQuery + ' الموقف القديم أطفيح'].filter(Boolean))]
+          ? [...new Set([query, nameQuery, nameQuery + ' أطفيح', nameQuery + ' شارع المؤسسة أطفيح', nameQuery + ' الموقف القديم أطفيح'].filter(Boolean))]
           : [...new Set([query, cleanQuery].filter(Boolean))];
         for (const searchText of queryVariants) {
           const geocodeWait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
