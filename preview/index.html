@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>
+(function () {
+  var host = location.hostname;
+  if (host.endsWith('.toktok-atfeh-preview.pages.dev') && host !== 'toktok-atfeh-preview.pages.dev') {
+    location.replace('https://toktok-atfeh-preview.pages.dev' + location.pathname + location.search + location.hash);
+  }
+})();
+window.__loadExternalScripts = function (urls) {
+  return urls.reduce(function (chain, url) {
+    return chain.then(function () {
+      return new Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.src = url;
+        script.onload = resolve;
+        script.onerror = function () { script.remove(); reject(new Error('external script failed')); };
+        document.head.appendChild(script);
+      });
+    });
+  }, Promise.resolve());
+};
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0B1F4B">
@@ -135,8 +156,11 @@ h1{margin:2px 0 0;font-size:32px;font-weight:800;display:inline-block;border-bot
 
 <div id="toast" hidden role="status"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+<script>window.__loadExternalScripts([
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+  "https://unpkg.com/@supabase/supabase-js@2"
+]).then(function () {
+
 const SUPABASE_URL = "https://nhxenquczoaxytxskdsa.supabase.co";
 const SUPABASE_KEY = "sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT";
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -195,6 +219,9 @@ document.getElementById('backBtn').addEventListener('click', function () { histo
 window.addEventListener('popstate', function () { show('home', false); });
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
+}).catch(function () {
+  document.getElementById("authError").textContent = "تعذر تحميل خدمة تسجيل الدخول. تأكد من الإنترنت ثم أعد تحميل الصفحة.";
+});
 </script>
 </body>
   </html>
