@@ -710,7 +710,7 @@ async function searchDestination(){
               if (!point || (t.amenity !== 'place_of_worship' && t.building !== 'mosque')) return;
               const title = t.name || t['name:ar'] || t.official_name || t.alt_name || query;
               add({lat:point.lat,lon:point.lon,name:title,
-                display_name:[title,t['addr:suburb'],t['addr:city'] || 'أطفيح',t['addr:state'] || 'الجيزة'].filter(Boolean).join('، '),isPoi:true});
+                display_name:[title,t['addr:street'],t['addr:place'],t['addr:neighbourhood'],t['addr:suburb'],t['addr:city'] || 'أطفيح',t['addr:state'] || 'الجيزة'].filter(Boolean).join('، '),isPoi:true});
             });
             break;
           } catch(error) { console.warn('Overpass endpoint failed:', endpoint, error); }
@@ -719,8 +719,10 @@ async function searchDestination(){
       }
 
       // 2) Nominatim fallback and normal place search, with a bounded local search area.
-      if (!candidates.length) {
-        const queryVariants = [...new Set([query, cleanQuery].filter(Boolean))];
+      if (!candidates.length || wantsMosque) {
+        const queryVariants = wantsMosque
+          ? [...new Set([query, cleanQuery, cleanQuery + ' شارع المؤسسة أطفيح', cleanQuery + ' الموقف القديم أطفيح'].filter(Boolean))]
+          : [...new Set([query, cleanQuery].filter(Boolean))];
         for (const searchText of queryVariants) {
           const params = new URLSearchParams({
             q: searchText + (wantsMosque ? ', Atfih, Giza, Egypt' : ', Egypt'),
@@ -742,7 +744,7 @@ async function searchDestination(){
                 display_name:place.display_name,isPoi});
             });
           } finally { clearTimeout(timer); }
-          if (candidates.length) break;
+          if (candidates.length && !wantsMosque) break;
         }
       }
 
