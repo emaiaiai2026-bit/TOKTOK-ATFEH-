@@ -263,7 +263,7 @@ window.__loadExternalScripts = function (groups) {
 const SUPABASE_URL = 'https://nhxenquczoaxytxskdsa.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT';
 const APP_NAME = 'خدماتنا';
-const DEFAULT_CENTER = [29.405531, 31.249181]; // مسجد أبو مشهور: مركز الاختبار عند تعذر GPS
+const DEFAULT_CENTER = [29.4075, 31.2525]; // مركز أطفيح العام عند تعذر GPS؛ الموقع الحقيقي يتحدد من GPS
 const EMAIL_DOMAIN = 'tuktuk.app';           // إيميل داخلي بيتبني من رقم الموبايل
 const AVG_SPEED_KMH = 20;                    // لتقدير وقت وصول السواق
 /* ================================================ */
@@ -707,7 +707,8 @@ async function searchDestination(){
             (payload.elements || []).forEach(element => {
               const t = element.tags || {};
               const point = element.type === 'node' ? {lat:element.lat,lon:element.lon} : element.center;
-              if (!point || (t.amenity !== 'place_of_worship' && t.building !== 'mosque')) return;
+              const isMosque = t.building === 'mosque' || (t.amenity === 'place_of_worship' && (String(t.religion || '').toLowerCase() === 'muslim' || /مسجد|جامع|mosque/i.test([t.name,t['name:ar'],t.official_name].filter(Boolean).join(' '))));
+              if (!point || !isMosque) return;
               const names = [t.name,t['name:ar'],t.alt_name,t.official_name,t.loc_name,t.short_name,t['name:en']].filter(Boolean);
               const searchable = normalize(names.join(' '));
               const wanted = tokens.map(normalize).filter(Boolean);
@@ -734,7 +735,7 @@ async function searchDestination(){
           lastGeocodeAt = Date.now();
           const params = new URLSearchParams({
             q: searchText + (wantsMosque ? ', Atfih, Giza, Egypt' : ', Egypt'),
-            format:'jsonv2', addressdetails:'1', limit:'12',
+            format:'jsonv2', addressdetails:'1', extratags:'1', namedetails:'1', limit:'20',
             countrycodes:'eg', 'accept-language':'ar',
             viewbox:[center.lng-.25,center.lat+.25,center.lng+.25,center.lat-.25].join(',')
           });
@@ -745,8 +746,12 @@ async function searchDestination(){
             if (!response.ok) throw new Error('Nominatim HTTP ' + response.status);
             const payload = await response.json();
             payload.forEach(place => {
-              const isPoi = place.class === 'amenity' && place.type === 'place_of_worship'
-                || place.class === 'building' && /mosque/i.test(place.type || '');
+              const extra = place.extratags || {};
+              const isPoi = /mosque/i.test(place.type || '')
+                || String(extra.building || '').toLowerCase() === 'mosque'
+                || (place.class === 'amenity' && place.type === 'place_of_worship'
+                  && (String(extra.religion || '').toLowerCase() === 'muslim'
+                    || /مسجد|جامع|mosque/i.test([place.name, place.namedetails && place.namedetails.name, place.display_name].filter(Boolean).join(' '))));
               if (wantsMosque && !isPoi) return;
               add({lat:place.lat,lon:place.lon,name:place.name || (place.display_name || '').split(',')[0],
                 display_name:place.display_name,isPoi});
@@ -781,7 +786,15 @@ async function searchDestination(){
     }
 
     const origin = pickup || center;
-    results.sort((a,b)=>haversine(origin,L.latLng(Number(a.lat),Number(a.lon)))-haversine(origin,L.latLng(Number(b.lat),Number(b.lon))));
+    results.sort((a,b)=>{
+      const rank = place => {
+        const name = normalize(place.name || '');
+        const matched = tokens.filter(token => name.includes(token)).length;
+        const exact = tokens.length && matched === tokens.length ? 1000 : matched * 100;
+        return exact - haversine(origin,L.latLng(Number(place.lat),Number(place.lon)));
+      };
+      return rank(b) - rank(a);
+    });
     box.replaceChildren();
     if (!results.length) {
       box.replaceChildren();
