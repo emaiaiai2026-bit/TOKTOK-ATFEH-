@@ -459,9 +459,9 @@ function resolveAddress(kind, ll, fallback){
       pickupAddr = text;
       $('pickupLabel').textContent = shown;
       const pickupField = $('pickupText');
-      if (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value) {
-        pickupField.value = shown;
-        pickupField.dataset.autoAddress = shown;
+      if (text && (!pickupField.value.trim() || pickupField.dataset.autoAddress === pickupField.value)) {
+        pickupField.value = text;
+        pickupField.dataset.autoAddress = text;
       }
       if (pickupMarker && pickupMarker.getTooltip()) pickupMarker.setTooltipContent(shown);
     } else {
