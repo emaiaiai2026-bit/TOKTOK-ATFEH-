@@ -645,7 +645,7 @@ async function searchDestination(){
       if (wantsMosque && !tokens.length) throw new Error('اكتب اسم المسجد بعد كلمة مسجد');
       const regex = tokens.map(token => Array.from(token).map(ch => {
         const variants = { 'ا':'[اأإآٱ]', 'ه':'[هة]', 'ي':'[يىئ]', 'و':'[وؤ]' };
-        return variants[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\      const regex = tokens.map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*');');
+        return variants[ch] || ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       }).join('')).join('.*');
       const candidates = [];
       const add = item => {
