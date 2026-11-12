@@ -324,17 +324,38 @@ function stopDoctorCamera(){
 }
 $('openDoctorCameraBtn').onclick=async()=>{
   const status=$('doctorOcrStatus');
-  if(!navigator.mediaDevices?.getUserMedia){status.textContent='الكاميرا داخل الصفحة غير مدعومة هنا. استخدم «اختيار صورة محفوظة». ';return;}
+  if(!window.isSecureContext){status.textContent='تعذر تشغيل الكاميرا لأن الصفحة ليست في اتصال آمن HTTPS. افتح رابط pages.dev مباشرة.';return;}
+  if(!navigator.mediaDevices?.getUserMedia){status.textContent='المتصفح لا يتيح واجهة الكاميرا لهذه الصفحة. افتح الرابط في Chrome مباشرة أو اختر صورة محفوظة.';return;}
   try{
     status.textContent='جارٍ فتح الكاميرا...';
-    doctorCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
-    $('doctorCameraVideo').srcObject=doctorCameraStream;
+    // Use the simplest camera request first; avoid high-resolution constraints on some Android devices.
+    try{
+      doctorCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    }catch(firstError){
+      console.warn('Rear camera request failed:',firstError);
+      doctorCameraStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+    }
+    const video=$('doctorCameraVideo');
+    video.muted=true;
+    video.setAttribute('playsinline','');
+    video.srcObject=doctorCameraStream;
     $('doctorCameraModal').classList.remove('hidden');
-    await $('doctorCameraVideo').play();
+    await video.play();
     status.textContent='الكاميرا جاهزة. ضع الكارت داخل الإطار الأصفر.';
   }catch(e){
+    console.error('Doctor camera error:',e);
     stopDoctorCamera();
-    status.textContent='لم نتمكن من فتح الكاميرا. اسمح للمتصفح باستخدام الكاميرا أو اختر صورة محفوظة.';
+    const reason=e?.name||'UnknownError';
+    const detail=(e?.message||'').slice(0,140);
+    const messages={
+      NotAllowedError:'إذن الكاميرا مرفوض أو محجوب من المتصفح/النظام.',
+      PermissionDeniedError:'إذن الكاميرا مرفوض أو محجوب من المتصفح/النظام.',
+      NotFoundError:'لم يتم العثور على كاميرا متاحة بالجهاز.',
+      NotReadableError:'الكاميرا مشغولة بتطبيق آخر أو تعذر تشغيلها من النظام.',
+      OverconstrainedError:'إعداد الكاميرا المطلوب غير مدعوم بالجهاز.',
+      SecurityError:'المتصفح منع الوصول للكاميرا لأسباب أمنية.'
+    };
+    status.textContent='تعذر فتح الكاميرا: '+(messages[reason]||reason)+(detail?' — '+detail:'')+' (رمز: '+reason+')';
   }
 };
 $('closeDoctorCameraBtn').onclick=stopDoctorCamera;
