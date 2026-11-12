@@ -272,9 +272,51 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-// تصوير داخل الصفحة بإطار مستطيل، ثم قراءة الصورة محليًا.
+// تصوير داخل الصفحة بإطار مستطيل، مع حفظ الصورة مؤقتًا على الجهاز لاستعادتها بعد إعادة فتح الصفحة.
 let doctorCardObjectUrl = null, tesseractLoadPromise = null, doctorCardFile = null, doctorCameraStream = null;
 const doctorPhotoInput = $('doctorCardPhoto');
+const DOCTOR_PHOTO_DB = 'toktok-doctor-photo-v1';
+function openDoctorPhotoDb(){
+  return new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)){reject(new Error('التخزين المؤقت غير مدعوم في هذا المتصفح.'));return;}
+    const req=indexedDB.open(DOCTOR_PHOTO_DB,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('photos'))req.result.createObjectStore('photos');};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error('تعذر فتح التخزين المؤقت للصورة.'));
+  });
+}
+async function saveDoctorPhotoLocally(file){
+  const db=await openDoctorPhotoDb();
+  try{await new Promise((resolve,reject)=>{
+    const tx=db.transaction('photos','readwrite');
+    tx.objectStore('photos').put({blob:file,type:file.type||'image/jpeg',name:file.name||'doctor-card.jpg',savedAt:Date.now()},'current');
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('تعذر حفظ الصورة مؤقتًا.'));
+  });}finally{db.close();}
+}
+async function restoreDoctorPhotoLocally(){
+  try{
+    const db=await openDoctorPhotoDb();
+    const saved=await new Promise((resolve,reject)=>{
+      const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get('current');
+      req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
+    });
+    db.close();
+    if(!saved?.blob || Date.now()-saved.savedAt>24*60*60*1000)return;
+    doctorCardFile=new File([saved.blob],saved.name||'doctor-card.jpg',{type:saved.type||'image/jpeg'});
+    if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
+    doctorCardObjectUrl=URL.createObjectURL(doctorCardFile);
+    $('doctorCardPreview').src=doctorCardObjectUrl;
+    $('doctorCardPreview').classList.remove('hidden');
+    $('readDoctorCardBtn').disabled=false;
+    $('doctorOcrStatus').textContent='استعدنا الصورة السابقة من هذا الجهاز. اضغط «قراءة البيانات من الصورة» أو التقط صورة جديدة.';
+  }catch(e){console.warn('Doctor photo restore:',e);}
+}
+async function clearDoctorPhotoLocally(){
+  try{const db=await openDoctorPhotoDb();await new Promise((resolve,reject)=>{
+    const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete('current');
+    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+  });db.close();}catch(e){console.warn('Doctor photo cleanup:',e);}
+}
 function stopDoctorCamera(){
   if(doctorCameraStream){doctorCameraStream.getTracks().forEach(track=>track.stop());doctorCameraStream=null;}
   $('doctorCameraVideo').srcObject=null;
@@ -315,7 +357,12 @@ $('captureDoctorPhotoBtn').onclick=()=>{
     $('doctorCardPreview').classList.remove('hidden');
     $('readDoctorCardBtn').disabled=false;
     $('doctorOcrText').value='';
-    $('doctorOcrStatus').textContent='تم التقاط الجزء داخل الإطار. اضغط «قراءة البيانات من الصورة».';
+    $('doctorOcrStatus').textContent='تم التقاط الصورة. جارٍ حفظ نسخة مؤقتة على الجهاز...';
+    saveDoctorPhotoLocally(doctorCardFile).then(()=>{
+      $('doctorOcrStatus').textContent='تم التقاط الجزء داخل الإطار وحفظه مؤقتًا على الجهاز. اضغط «قراءة البيانات من الصورة».';
+    }).catch(()=>{
+      $('doctorOcrStatus').textContent='تم التقاط الصورة، لكن تعذر حفظ نسخة احتياطية. يمكنك قراءة الصورة الآن.';
+    });
     stopDoctorCamera();
   },'image/jpeg',.92);
 };
@@ -332,20 +379,31 @@ doctorPhotoInput.addEventListener('change',()=>{
   $('doctorCardPreview').src=doctorCardObjectUrl;
   $('doctorCardPreview').classList.remove('hidden');
   $('readDoctorCardBtn').disabled=false;
-  $('doctorOcrStatus').textContent='الصورة جاهزة. اضغط «قراءة البيانات من الصورة».';
+  $('doctorOcrStatus').textContent='الصورة جاهزة. جارٍ حفظ نسخة مؤقتة على الجهاز...';
+  saveDoctorPhotoLocally(file).then(()=>$('doctorOcrStatus').textContent='الصورة جاهزة ومحفوظة مؤقتًا على الجهاز. اضغط «قراءة البيانات من الصورة».')
+    .catch(()=>$('doctorOcrStatus').textContent='الصورة جاهزة للقراءة، لكن تعذر حفظ نسخة احتياطية.');
 });
 window.addEventListener('pagehide',stopDoctorCamera);
+restoreDoctorPhotoLocally();
 
+function withDoctorOcrTimeout(promise,ms,label){
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);})
+  ]).finally(()=>clearTimeout(timer));
+}
 async function loadDoctorOcr(){
   if(window.Tesseract)return window.Tesseract;
   if(!tesseractLoadPromise)tesseractLoadPromise=new Promise((resolve,reject)=>{
     const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
-    s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('أداة قراءة الصور لم تعمل.'));
-    s.onerror=()=>reject(new Error('تعذر تحميل أداة قراءة الصور. تأكد من اتصال الإنترنت.'));
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('تم تحميل الصفحة لكن أداة قراءة الصور لم تبدأ.'));
+    s.onerror=()=>{tesseractLoadPromise=null;reject(new Error('تعذر تحميل أداة قراءة الصور من الإنترنت. جرّب اتصالًا أقوى ثم أعد المحاولة.'));};
     document.head.appendChild(s);
+    setTimeout(()=>{if(!window.Tesseract){tesseractLoadPromise=null;reject(new Error('انتهت مهلة تحميل أداة قراءة الصور. تحقق من الإنترنت ثم أعد المحاولة.'));}},30000);
   });
-  return tesseractLoadPromise;
+  return withDoctorOcrTimeout(tesseractLoadPromise,35000,'تحميل أداة قراءة الصور استغرق وقتًا أطول من اللازم.');
 }
 function fillDoctorField(id,value){if(value&&!$(id).value.trim())$(id).value=value.trim();}
 function applyDoctorOcrText(raw){
@@ -371,13 +429,18 @@ $('readDoctorCardBtn').onclick=async()=>{
   try{
     status.textContent='جارٍ تحميل قارئ العربية والإنجليزية. أول مرة قد تستغرق وقتًا...';
     const T=await loadDoctorOcr();
-    worker=await T.createWorker('ara+eng',1,{logger:m=>{
-      if(m.status==='loading tesseract core')status.textContent='جارٍ تجهيز محرك القراءة...';
-      else if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة العربية والإنجليزية...';
-      else if(m.status==='initializing api')status.textContent='جارٍ تهيئة قارئ النصوص...';
-      else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة الصورة: '+Math.round(m.progress*100)+'٪';
-    }});
-    const result=await worker.recognize(file);
+    status.textContent='تم تحميل الأداة. جارٍ تجهيز محرك القراءة...';
+    worker=await withDoctorOcrTimeout(T.createWorker('ara+eng',1,{
+      logger:m=>{
+        if(m.status==='loading tesseract core')status.textContent='جارٍ تنزيل وتجهيز محرك القراءة...';
+        else if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة العربية والإنجليزية...';
+        else if(m.status==='initializing api')status.textContent='جارٍ تهيئة قارئ النصوص...';
+        else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة الصورة: '+Math.round(m.progress*100)+'٪';
+      },
+      errorHandler:e=>{console.error('Tesseract worker:',e);}
+    }),120000,'تجهيز محرك القراءة أو ملفات اللغة استغرق أكثر من دقيقتين. أعد المحاولة مع اتصال إنترنت ثابت.');
+    status.textContent='تم تجهيز القارئ. جارٍ قراءة الصورة...';
+    const result=await withDoctorOcrTimeout(worker.recognize(file),120000,'قراءة الصورة استغرقت أكثر من دقيقتين. جرّب صورة أوضح وأصغر حجمًا.');
     const raw=result?.data?.text||'';
     $('doctorOcrText').value=raw;
     if(!raw.trim()){status.textContent='لم نتمكن من قراءة نص واضح. جرّب صورة أقرب وإضاءة أفضل.';return;}
