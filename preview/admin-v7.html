@@ -475,14 +475,17 @@ $('readDoctorCardBtn').onclick=async()=>{
     const T=await loadDoctorOcr();
     status.textContent='تم تحميل الأداة. جارٍ تجهيز محرك القراءة...';
     worker=await withDoctorOcrTimeout(T.createWorker('ara+eng',1,{
+      // Use the smaller fast language models to reduce first-time downloads on mobile networks.
+      workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+      langPath:'https://tessdata.projectnaptha.com/4.0.0_fast',
       logger:m=>{
         if(m.status==='loading tesseract core')status.textContent='جارٍ تنزيل وتجهيز محرك القراءة...';
-        else if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة العربية والإنجليزية...';
+        else if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة العربية والإنجليزية (نسخة سريعة)...';
         else if(m.status==='initializing api')status.textContent='جارٍ تهيئة قارئ النصوص...';
         else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة الصورة: '+Math.round(m.progress*100)+'٪';
       },
       errorHandler:e=>{console.error('Tesseract worker:',e);}
-    }),120000,'تجهيز محرك القراءة أو ملفات اللغة استغرق أكثر من دقيقتين. أعد المحاولة مع اتصال إنترنت ثابت.');
+    }),180000,'تجهيز محرك القراءة أو ملفات اللغة استغرق أكثر من 3 دقائق. أعد المحاولة مع اتصال إنترنت ثابت.');
     status.textContent='تم تجهيز القارئ. جارٍ قراءة الصورة...';
     const result=await withDoctorOcrTimeout(worker.recognize(file),120000,'قراءة الصورة استغرقت أكثر من دقيقتين. جرّب صورة أوضح وأصغر حجمًا.');
     const raw=result?.data?.text||'';
