@@ -38,6 +38,10 @@
   .hero p{margin:10px 0 0;color:#B8C6E8}
   .authsheet{background:#fff;border-radius:24px 24px 0 0;padding:22px 20px 32px;flex:1}
   .msg{min-height:22px;margin:10px 0 0;color:var(--danger);font-size:14px}
+  #pinScreen{min-height:100%;display:flex;flex-direction:column;background:var(--navy)}
+  .pinSheet{background:#fff;border-radius:24px 24px 0 0;padding:24px 20px 32px;flex:1}
+  .pinSheet h2{margin-top:0}
+
 
   /* التطبيق */
   #app{position:fixed;inset:0;display:flex;flex-direction:column}
@@ -97,6 +101,28 @@
     <button id="googleAdminBtn" class="btn" type="button" style="background:#fff;color:#1f2937;border:1px solid #cbd5e1">المتابعة باستخدام Google</button>
     <p class="hint" style="text-align:center;margin-top:8px">استخدم حساب Google المرتبط بحساب الإدارة الأصلي فقط.</p>
     <p id="authMsg" class="msg" role="alert"></p>
+  </div>
+</div>
+
+<!-- التحقق من الرقم السري للمدير -->
+<div id="pinScreen" class="hidden">
+  <div class="hero"><h1>حماية الإدارة</h1><p>تحقق إضافي قبل فتح لوحة الإدارة</p></div>
+  <div class="pinSheet">
+    <h2 id="pinTitle">الرقم السري</h2>
+    <p id="pinDescription" class="hint">أدخل الرقم السري المكوّن من 6 أرقام.</p>
+    <div id="pinSetupFields" class="hidden">
+      <label for="newAdminPin">اختيار رقم سري جديد</label>
+      <input id="newAdminPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="6 أرقام">
+      <label for="confirmAdminPin">تأكيد الرقم السري</label>
+      <input id="confirmAdminPin" type="password" inputmode="numeric" autocomplete="new-password" maxlength="6" pattern="[0-9]{6}" placeholder="أعد كتابة الرقم">
+    </div>
+    <div id="pinVerifyFields">
+      <label for="adminPin">الرقم السري</label>
+      <input id="adminPin" type="password" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="أدخل 6 أرقام">
+    </div>
+    <button id="submitAdminPin" class="btn" type="button">تأكيد</button>
+    <p id="pinMsg" class="msg" role="alert"></p>
+    <button id="pinLogoutBtn" class="sm stop" type="button" style="margin-top:12px">خروج من حساب الإدارة</button>
   </div>
 </div>
 
@@ -300,30 +326,130 @@ async function checkGoogleLinkCallback(){
     await start();
     return;
   }
-  $('authScreen').classList.add('hidden');
-  $('app').classList.remove('hidden');
-  initMap(); loadSettings(); loadVehicleTypes(); refresh();
-  clearInterval(timer); timer = setInterval(refresh, 10000);
-  showTab('settings');
-  toast('تم ربط Google بنفس حساب الإدارة بنجاح.');
-  updateGoogleLinkStatus();
+  await start();
+  if (!$('app').classList.contains('hidden')) {
+    showTab('settings');
+    toast('تم ربط Google بنفس حساب الإدارة بنجاح.');
+    updateGoogleLinkStatus();
+  }
 }
 async function start(){
   const { data: { user }, error: userError } = await sb.auth.getUser();
   if (userError || !user) return;
   const { data: prof, error: profileError } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  if (profileError || !prof || prof.role !== 'admin') {
+  if (profileError || !prof || prof.role !== 'admin' || user.id !== ORIGINAL_ADMIN_ID) {
     $('authMsg').textContent = 'بيانات الدخول صحيحة لكن الحساب غير مصرح له بدخول الإدارة.';
     await sb.auth.signOut();
     return;
   }
   $('authScreen').classList.add('hidden');
+  $('app').classList.add('hidden');
+  $('pinScreen').classList.remove('hidden');
+  const allowed = await runAdminPinGate();
+  if (!allowed) return;
+  $('pinScreen').classList.add('hidden');
   $('app').classList.remove('hidden');
   initMap();
   loadSettings();
   loadVehicleTypes();
   refresh();
   clearInterval(timer); timer = setInterval(refresh, 10000);
+}
+
+/* ---------- التحقق الإضافي من رقم PIN ---------- */
+let pinMode = 'verify';
+async function runAdminPinGate(){
+  $('pinMsg').textContent = '';
+  $('pinSetupFields').classList.add('hidden');
+  $('pinVerifyFields').classList.remove('hidden');
+  $('pinTitle').textContent = 'أدخل الرقم السري';
+  $('pinDescription').textContent = 'أدخل الرقم السري المكوّن من 6 أرقام لفتح لوحة الإدارة.';
+  $('submitAdminPin').textContent = 'تحقق وافتح الإدارة';
+  $('adminPin').value = '';
+  $('newAdminPin').value = '';
+  $('confirmAdminPin').value = '';
+  const { data, error } = await sb.rpc('admin_pin_status');
+  if (error) {
+    $('pinMsg').textContent = 'تعذر التحقق من إعدادات الرقم السري: ' + error.message;
+    $('submitAdminPin').disabled = true;
+    return false;
+  }
+  $('submitAdminPin').disabled = false;
+  pinMode = data?.[0]?.pin_is_set ? 'verify' : 'setup';
+  if (pinMode === 'setup') {
+    $('pinTitle').textContent = 'إنشاء رقم سري للإدارة';
+    $('pinDescription').textContent = 'أنشئ رقمًا سريًا من 6 أرقام. لا تستخدم رقمًا سهل التخمين.';
+    $('pinSetupFields').classList.remove('hidden');
+    $('pinVerifyFields').classList.add('hidden');
+    $('submitAdminPin').textContent = 'حفظ الرقم السري';
+  } else if (data?.[0]?.locked_until && new Date(data[0].locked_until) > new Date()) {
+    $('pinMsg').textContent = 'تم إيقاف المحاولات مؤقتًا للحماية. حاول بعد انتهاء القفل.';
+    $('submitAdminPin').disabled = true;
+    return false;
+  }
+  return new Promise(resolve => {
+    const handler = async () => {
+      $('submitAdminPin').disabled = true;
+      $('pinMsg').textContent = '';
+      if (pinMode === 'setup') {
+        const pin = $('newAdminPin').value;
+        const confirmPin = $('confirmAdminPin').value;
+        if (!/^\\d{6}$/.test(pin)) {
+          $('pinMsg').textContent = 'اكتب 6 أرقام بالضبط.';
+          $('submitAdminPin').disabled = false; return;
+        }
+        if (pin !== confirmPin) {
+          $('pinMsg').textContent = 'الرقمان غير متطابقين.';
+          $('submitAdminPin').disabled = false; return;
+        }
+        const { error: setError } = await sb.rpc('admin_pin_set', { p_pin: pin });
+        if (setError) {
+          $('pinMsg').textContent = 'تعذر حفظ الرقم السري: ' + setError.message;
+          $('submitAdminPin').disabled = false; return;
+        }
+        $('pinMsg').textContent = 'تم حفظ الرقم السري بنجاح.';
+        resolve(true);
+        return;
+      }
+      const pin = $('adminPin').value;
+      if (!/^\\d{6}$/.test(pin)) {
+        $('pinMsg').textContent = 'اكتب 6 أرقام بالضبط.';
+        $('submitAdminPin').disabled = false; return;
+      }
+      const { data: ok, error: verifyError } = await sb.rpc('admin_pin_verify', { p_pin: pin });
+      if (verifyError) {
+        $('pinMsg').textContent = 'تعذر التحقق: ' + verifyError.message;
+        $('submitAdminPin').disabled = false; return;
+      }
+      if (ok === true) {
+        resolve(true);
+        return;
+      }
+      const { data: fresh } = await sb.rpc('admin_pin_status');
+      const state = fresh?.[0];
+      if (state?.locked_until && new Date(state.locked_until) > new Date()) {
+        $('pinMsg').textContent = 'محاولات كثيرة غير صحيحة. تم قفل الدخول لمدة 15 دقيقة.';
+        $('submitAdminPin').disabled = true;
+      } else {
+        $('pinMsg').textContent = 'الرقم السري غير صحيح. المحاولات المتبقية: ' + (state?.attempts_remaining ?? '—');
+        $('submitAdminPin').disabled = false;
+      }
+    };
+    $('submitAdminPin').addEventListener('click', handler);
+    $('adminPin').onkeydown = e => { if (e.key === 'Enter') $('submitAdminPin').click(); };
+    $('confirmAdminPin').onkeydown = e => { if (e.key === 'Enter') $('submitAdminPin').click(); };
+    $('pinLogoutBtn').onclick = async () => {
+      $('submitAdminPin').removeEventListener('click', handler);
+      await sb.auth.signOut();
+      location.replace('./admin-v7.html');
+      resolve(false);
+    };
+    const originalResolve = resolve;
+    resolve = value => {
+      $('submitAdminPin').removeEventListener('click', handler);
+      originalResolve(value);
+    };
+  });
 }
 
 /* ---------- التابات ---------- */
