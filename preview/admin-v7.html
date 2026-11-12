@@ -155,6 +155,17 @@
 
     <section class="pane hidden" id="paneDoctors">
       <h2>إدارة الأطباء</h2>
+      <div class="card" id="doctorInviteCard">
+        <h3 style="margin:0 0 8px">دعوة الطبيب بالتليفون أو QR</h3>
+        <p class="hint">خلّي الطبيب يفتح كاميرا موبايله ويوجّهها للرمز. هتفتح له صفحة طلب الانضمام، والطلب يفضل غير مفعّل لحد موافقتك.</p>
+        <div style="display:flex;justify-content:center;padding:10px">
+          <img id="doctorInviteQr" width="220" height="220" alt="رمز QR لتسجيل الطبيب" style="max-width:100%;border:1px solid var(--line);border-radius:12px">
+        </div>
+        <label for="doctorInviteUrl">رابط تسجيل الطبيب</label>
+        <input id="doctorInviteUrl" readonly value="https://toktok-atfeh-preview.pages.dev/medical.html?join=doctor" dir="ltr" style="font-size:13px">
+        <button id="copyDoctorInvite" class="sm pay" type="button">نسخ رابط التسجيل</button>
+        <p id="doctorInviteMsg" class="hint" role="status"></p>
+      </div>
       <div class="card">
         <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
         <label for="doctorUserSearch">ابحث بالاسم أو رقم الموبايل</label><input id="doctorUserSearch" placeholder="اكتب جزءًا من الاسم أو الرقم">
@@ -249,6 +260,18 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
+// رابط دعوة الطبيب: يمسح الطبيب الرمز بكاميرا الهاتف لفتح نموذج التسجيل.
+(function setupDoctorInvite(){
+ const input=$('doctorInviteUrl'),img=$('doctorInviteQr'),btn=$('copyDoctorInvite'),msg=$('doctorInviteMsg');
+ if(!input||!img||!btn)return;
+ const invite=input.value;
+ img.src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(invite);
+ btn.onclick=async()=>{
+  try{await navigator.clipboard.writeText(invite);msg.textContent='تم نسخ رابط تسجيل الطبيب.';}
+  catch(e){input.focus();input.select();msg.textContent='حدّد الرابط وانسخه يدويًا.';}
+ };
+})();
+ 
 /* ---------- دخول الإدارة بالبريد وكلمة المرور ---------- */
 $('emailAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
