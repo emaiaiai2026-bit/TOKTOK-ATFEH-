@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0B1F4B"><title>الخدمات الطبية | خدماتنا</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F4B;--blue:#1A56DB;--gold:#FFB400;--bg:#EAF1FF;--line:#DCE3F0;--muted:#64748b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:Cairo,system-ui,sans-serif}
+header{background:var(--navy);color:white;padding:22px 18px 28px}header a{color:#dbeafe;text-decoration:none}h1{font-size:25px;margin:12px 0 4px}header p{margin:0;color:#c6d4f0;font-size:13px}
+main{max-width:680px;margin:-12px auto 30px;padding:0 12px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:17px;margin-bottom:12px}
+h2{font-size:19px;margin:0 0 8px}.muted{color:var(--muted);font-size:13px;line-height:1.8}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}.choice{background:#f7f9ff;border:1px solid var(--line);border-radius:15px;padding:18px 10px;color:var(--navy);font:inherit;font-weight:800;min-height:112px}.choice span{display:block;font-size:28px;margin-bottom:6px}.choice.active{border:2px solid var(--blue);background:#f1f6ff}
+label{display:block;font-weight:700;font-size:13px;margin:12px 0 5px}input,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--navy)}textarea{min-height:80px}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px;font-weight:700}.primary{width:100%;background:var(--blue);color:#fff;margin-top:14px}.primary:disabled{opacity:.55}
+.notice{background:#fff7dc;border:1px solid #f1d98b;padding:12px;border-radius:12px;margin-top:12px;font-size:13px;line-height:1.8}
+#msg{position:fixed;bottom:16px;left:12px;right:12px;max-width:650px;margin:auto;background:var(--navy);color:#fff;padding:12px 15px;border-radius:12px;text-align:center;z-index:5}[hidden]{display:none!important}
+@media(max-width:390px){.actions{grid-template-columns:1fr}}
+</style></head>
+<body>
+<header><a href="./index.html">← الرجوع للخدمات</a><h1>الخدمات الطبية</h1><p>احجز عند طبيب أو انضم كطبيب لخدمة عملاء خدماتنا.</p></header>
+<main>
+<section class="panel" id="choosePanel">
+<h2>إنت داخل بصفتك إيه؟</h2><div class="muted">اختار المسار المناسب ليك.</div>
+<div class="actions">
+<button class="choice" id="patientChoice" type="button"><span>📅</span>أنا مريض — احجز</button>
+<button class="choice" id="doctorChoice" type="button"><span>🩺</span>أنا طبيب — عيادتي</button>
+</div></section>
+<section class="panel" id="doctorPanel" hidden>
+<h2>طلب الانضمام كطبيب</h2>
+<p class="muted">اكتب بياناتك مرة واحدة. طلبك هيتراجع من الإدارة، ومش هتظهر للمرضى قبل الموافقة.</p>
+<div id="applicationStatus" class="notice" hidden></div>
+<form id="doctorForm">
+<label for="name">اسم الطبيب بالكامل *</label><input id="name" maxlength="120" required>
+<label for="specialty">التخصص *</label><input id="specialty" maxlength="120" placeholder="مثال: أطفال، باطنة، أسنان" required>
+<label for="clinic">اسم العيادة</label><input id="clinic" maxlength="160">
+<label for="address">عنوان العيادة</label><input id="address" maxlength="250">
+<label for="phone">رقم الموبايل *</label><input id="phone" inputmode="numeric" maxlength="11" placeholder="01xxxxxxxxx" required>
+<label for="bio">نبذة عن الطبيب والخدمات</label><textarea id="bio" maxlength="1000"></textarea>
+<button class="primary" id="submitBtn" type="submit">إرسال طلب الانضمام</button>
+</form>
+<div class="notice">تنبيه: إرسال الطلب لا يعني اعتماد الطبيب تلقائيًا. الإدارة تراجع البيانات قبل إتاحة الحجز.</div>
+</section>
+</main><div id="msg" hidden role="status"></div>
+<script>
+(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
+async function init(){
+const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co','sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT');
+const $=id=>document.getElementById(id);let user=null;
+function msg(t){$('msg').textContent=t;$('msg').hidden=false;clearTimeout(msg.t);msg.t=setTimeout(()=>$('msg').hidden=true,4500)}
+const {data:{user:u},error}=await sb.auth.getUser();user=u;
+if(error||!user){location.replace('./index.html');return}
+const {data:profile}=await sb.from('profiles').select('name,phone').eq('id',user.id).maybeSingle();
+$('name').value=profile?.name||'';
+$('phone').value=profile?.phone||'';
+$('patientChoice').onclick=()=>location.href='./doctors.html';
+$('doctorChoice').onclick=async()=>{
+$('doctorPanel').hidden=false;$('doctorPanel').scrollIntoView({behavior:'smooth'});
+const {data:d}=await sb.from('doctor_profiles').select('display_name,specialty,clinic_name,address,phone,bio,is_active,self_registered').eq('user_id',user.id).maybeSingle();
+if(d){
+$('name').value=d.display_name||$('name').value;$('specialty').value=d.specialty||'';
+$('clinic').value=d.clinic_name||'';$('address').value=d.address||'';$('phone').value=d.phone||$('phone').value;$('bio').value=d.bio||'';
+$('applicationStatus').hidden=false;
+$('applicationStatus').textContent=d.is_active?'ملف عيادتك معتمد وظاهر للمرضى. تعديل البيانات وإرسالها مرة أخرى سيحتاج مراجعة الإدارة.':(d.self_registered?'طلبك وصل للإدارة ولسه تحت المراجعة. تقدر تحدّث بياناتك من هنا.':'عندك ملف طبيب غير مفعّل. راجع بياناتك وأرسل الطلب للمراجعة.');
+$('submitBtn').textContent=d.is_active?'حفظ التعديلات وإعادة المراجعة':'تحديث طلب الانضمام';
+}
+};
+$('doctorForm').onsubmit=async e=>{
+e.preventDefault();
+const name=$('name').value.trim(),specialty=$('specialty').value.trim(),phone=$('phone').value.replace(/\s/g,'');
+if(name.length<2||specialty.length<2)return msg('اكتب الاسم والتخصص بشكل صحيح.');
+if(!/^01[0125][0-9]{8}$/.test(phone))return msg('اكتب رقم موبايل مصري صحيح من 11 رقم.');
+$('submitBtn').disabled=true;
+const {error:saveError}=await sb.rpc('doctor_apply_self',{p_display_name:name,p_specialty:specialty,p_clinic_name:$('clinic').value.trim()||null,p_address:$('address').value.trim()||null,p_phone:phone,p_bio:$('bio').value.trim()||null});
+$('submitBtn').disabled=false;
+if(saveError){msg('تعذر إرسال الطلب: '+saveError.message);return}
+$('applicationStatus').hidden=false;$('applicationStatus').textContent='تم استلام طلبك. هتظهر عيادتك للمرضى بعد مراجعة الإدارة والموافقة.';
+$('submitBtn').textContent='تحديث طلب الانضمام';msg('تم إرسال طلب الانضمام بنجاح.');
+};
+}
+</script></body></html>
