@@ -88,11 +88,19 @@
   <div class="hero"><h1>لوحة الإدارة</h1><p>خدماتنا</p></div>
   <div class="authsheet">
     <p>دخول خاص بمدير التطبيق فقط.</p>
-    <label for="adminPhone">رقم الهاتف</label>
-    <input id="adminPhone" type="tel" inputmode="tel" autocomplete="username" placeholder="01xxxxxxxxx" maxlength="15">
+    <label for="adminEmail">البريد الإلكتروني المرتبط بحساب Google</label>
+    <input id="adminEmail" type="email" inputmode="email" autocomplete="username" placeholder="البريد الإلكتروني">
     <label for="adminPassword">كلمة المرور</label>
     <input id="adminPassword" type="password" autocomplete="current-password" placeholder="كلمة مرور الإدارة">
-    <button id="phoneAdminBtn" class="btn" type="button">دخول الإدارة</button>
+    <button id="emailAdminBtn" class="btn" type="button">دخول الإدارة</button>
+    <button id="setupAdminBtn" class="btn" type="button" style="margin-top:10px;background:#0B1F4B">تعيين كلمة مرور لأول مرة باستخدام Google</button>
+    <div id="passwordSetup" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
+      <p><b>تعيين كلمة مرور حساب الإدارة</b></p>
+      <p class="hint">تم التحقق من حساب Google وصلاحية الإدارة. اختر كلمة مرور جديدة.</p>
+      <label for="newAdminPassword">كلمة المرور الجديدة</label><input id="newAdminPassword" type="password" autocomplete="new-password" placeholder="12 حرفًا أو أكثر">
+      <label for="confirmAdminPassword">تأكيد كلمة المرور</label><input id="confirmAdminPassword" type="password" autocomplete="new-password" placeholder="اكتبها مرة أخرى">
+      <button id="saveAdminPasswordBtn" class="btn" type="button">حفظ كلمة المرور</button>
+    </div>
     <p id="authMsg" class="msg" role="alert"></p>
   </div>
 </div>
@@ -185,29 +193,88 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-/* ---------- دخول الإدارة برقم الهاتف وكلمة المرور ---------- */
-$('phoneAdminBtn').onclick = async () => {
+/* ---------- دخول الإدارة بالبريد وكلمة المرور ---------- */
+$('emailAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
-  const phone = normalizePhone($('adminPhone').value);
+  const email = $('adminEmail').value.trim().toLowerCase();
   const password = $('adminPassword').value;
-  if (!phone) { $('authMsg').textContent = 'اكتب رقم هاتف مصري صحيح.'; return; }
+  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { $('authMsg').textContent = 'اكتب بريدًا إلكترونيًا صحيحًا.'; return; }
   if (!password) { $('authMsg').textContent = 'اكتب كلمة المرور.'; return; }
-  $('phoneAdminBtn').disabled = true;
-  const { error } = await sb.auth.signInWithPassword({ phone, password });
+  $('emailAdminBtn').disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
   if (error) {
-    $('authMsg').textContent = 'رقم الهاتف أو كلمة المرور غير صحيحة، أو حساب الهاتف غير مفعّل.';
-    $('phoneAdminBtn').disabled = false;
+    $('authMsg').textContent = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+    $('emailAdminBtn').disabled = false;
     return;
   }
   await start();
-  $('phoneAdminBtn').disabled = false;
+  $('emailAdminBtn').disabled = false;
 };
-$('adminPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('phoneAdminBtn').click(); });
+$('adminPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('emailAdminBtn').click(); });
 $('logoutBtn').onclick = async () => {
   await sb.auth.signOut();
   location.replace('./admin-v7.html');
 };
 
+/* تعيين كلمة المرور لأول مرة: Google ثم تحديث كلمة مرور نفس المستخدم */
+$('setupAdminBtn').onclick = async () => {
+  $('authMsg').textContent = '';
+  $('setupAdminBtn').disabled = true;
+  const redirectTo = location.origin + location.pathname + '?setup=1';
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo, queryParams: { prompt: 'select_account' } }
+  });
+  if (error) {
+    $('authMsg').textContent = 'تعذر فتح تسجيل Google: ' + error.message;
+    $('setupAdminBtn').disabled = false;
+  }
+};
+async function checkAdminForPasswordSetup(){
+  if (new URLSearchParams(location.search).get('setup') !== '1') return;
+  $('authMsg').textContent = 'جارٍ التحقق من حساب Google...';
+  const { data: { user }, error } = await sb.auth.getUser();
+  if (error || !user) {
+    $('authMsg').textContent = 'تعذر استعادة جلسة Google. ارجع وحاول مرة أخرى.';
+    return;
+  }
+  const { data: prof, error: pe } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  if (pe || !prof || prof.role !== 'admin') {
+    $('authMsg').textContent = 'هذا الحساب ليس حساب الإدارة المصرح له.';
+    await sb.auth.signOut();
+    history.replaceState({}, '', location.pathname);
+    return;
+  }
+  if (!user.email) {
+    $('authMsg').textContent = 'حساب Google لا يحتوي على بريد إلكتروني صالح.';
+    await sb.auth.signOut();
+    return;
+  }
+  $('adminEmail').value = user.email;
+  $('passwordSetup').classList.remove('hidden');
+  $('setupAdminBtn').classList.add('hidden');
+  $('authMsg').textContent = 'تم التحقق من حساب الإدارة. عيّن كلمة المرور الآن.';
+}
+$('saveAdminPasswordBtn').onclick = async () => {
+  $('authMsg').textContent = '';
+  const p1 = $('newAdminPassword').value, p2 = $('confirmAdminPassword').value;
+  if (p1.length < 12) { $('authMsg').textContent = 'كلمة المرور لازم تكون 12 حرفًا على الأقل.'; return; }
+  if (p1 !== p2) { $('authMsg').textContent = 'كلمتا المرور غير متطابقتين.'; return; }
+  $('saveAdminPasswordBtn').disabled = true;
+  const { error } = await sb.auth.updateUser({ password: p1 });
+  if (error) {
+    $('authMsg').textContent = 'لم يتم حفظ كلمة المرور: ' + error.message;
+    $('saveAdminPasswordBtn').disabled = false;
+    return;
+  }
+  await sb.auth.signOut();
+  history.replaceState({}, '', location.pathname);
+  $('passwordSetup').classList.add('hidden');
+  $('setupAdminBtn').classList.remove('hidden');
+  $('newAdminPassword').value = ''; $('confirmAdminPassword').value = ''; $('adminPassword').value = '';
+  $('authMsg').textContent = 'تم حفظ كلمة المرور. سجّل الدخول بالبريد الإلكتروني وكلمة المرور الجديدة.';
+  $('saveAdminPasswordBtn').disabled = false;
+};
 async function start(){
   const { data: { user }, error: userError } = await sb.auth.getUser();
   if (userError || !user) return;
@@ -517,7 +584,8 @@ $('saveSettings').onclick = async () => {
   toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
 };
 
-// لا نفتح لوحة الإدارة بجلسة Google أو جلسة التطبيق؛ يلزم إدخال هاتف وكلمة مرور الإدارة هنا.
+// لا نفتح لوحة الإدارة تلقائيًا بجلسة Google؛ يلزم البريد وكلمة المرور.
+checkAdminForPasswordSetup();
 </script>
 </body>
 </html>
