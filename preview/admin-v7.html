@@ -159,7 +159,7 @@
         <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
         <div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#F8FAFF">
           <b>📷 تصوير كارت الطبيب أو الروشتة</b>
-          <p class="hint" style="margin:6px 0 10px">افتح الكاميرا من هنا، وضع بيانات الطبيب داخل الإطار المستطيل ثم التقط الصورة.</p>
+          <p class="hint" style="margin:6px 0 10px">ستظهر معاينة الكاميرا مباشرة داخل الصفحة. ضع بيانات الطبيب داخل الإطار الأصفر ثم التقط صورة أصلية عالية الدقة؛ الإطار دليل للتوجيه ولا نقصّ الصورة بعد التصوير.</p>
           <button id="openDoctorCameraBtn" class="sm pay" type="button" style="width:100%">فتح الكاميرا داخل الصفحة</button>
           <button id="chooseDoctorPhotoBtn" class="sm" type="button" style="width:100%;margin-top:7px;background:#eef2ff;color:var(--navy)">اختيار صورة محفوظة بدل التصوير</button>
           <input id="doctorCardPhoto" type="file" accept="image/*" hidden>
@@ -171,8 +171,8 @@
           <div id="doctorCameraModal" class="hidden" style="position:fixed;inset:0;z-index:5000;background:#07152b;display:flex;flex-direction:column;padding:16px;gap:12px;color:white">
             <b style="font-size:18px">وجّه الكارت أو النص داخل المستطيل</b>
             <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;aspect-ratio:4/3;margin:auto;overflow:hidden;background:#000;border-radius:14px">
-              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
-              <div style="position:absolute;left:6%;top:19%;width:88%;height:62%;border:3px solid #ffd54a;border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,.42);pointer-events:none"></div>
+              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain"></video>
+              <div style="position:absolute;left:6%;top:19%;width:88%;height:62%;border:3px solid #ffd54a;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.42),inset 0 0 0 1px rgba(255,255,255,.55);pointer-events:none"></div>
             </div>
             <p style="margin:0;text-align:center;font-size:13px">قرّب الكارت حتى تظهر الكتابة واضحة داخل الإطار الأصفر.</p>
             <div style="display:flex;gap:10px">
@@ -325,31 +325,38 @@ function stopDoctorCamera(){
 $('openDoctorCameraBtn').onclick=async()=>{
   const status=$('doctorOcrStatus');
   if(!window.isSecureContext){status.textContent='تعذر تشغيل الكاميرا لأن الصفحة ليست في اتصال آمن HTTPS. افتح رابط pages.dev مباشرة.';return;}
-  if(!navigator.mediaDevices?.getUserMedia){status.textContent='المتصفح لا يتيح واجهة الكاميرا لهذه الصفحة. افتح الرابط في Chrome مباشرة أو اختر صورة محفوظة.';return;}
+  if(!navigator.mediaDevices?.getUserMedia){status.textContent='المتصفح لا يتيح الكاميرا المباشرة. افتح الصفحة في Chrome أو اختر صورة محفوظة.';return;}
   try{
-    status.textContent='جارٍ فتح الكاميرا...';
-    // Use the simplest camera request first; avoid high-resolution constraints on some Android devices.
+    status.textContent='جارٍ طلب إذن الكاميرا وفتح المعاينة...';
+    const cameraOptions={audio:false,video:{
+      facingMode:{ideal:'environment'},
+      width:{ideal:1920},height:{ideal:1440},aspectRatio:{ideal:4/3}
+    }};
     try{
-      doctorCameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+      doctorCameraStream=await navigator.mediaDevices.getUserMedia(cameraOptions);
     }catch(firstError){
-      console.warn('Rear camera request failed:',firstError);
-      doctorCameraStream=await navigator.mediaDevices.getUserMedia({video:true,audio:false});
+      console.warn('Preferred rear camera constraints failed; retrying basic video:',firstError);
+      doctorCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
     }
+    const track=doctorCameraStream.getVideoTracks()[0];
+    // Request continuous autofocus when the Android camera exposes this capability.
+    try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(focusError){console.info('Continuous autofocus constraint not exposed:',focusError);}
     const video=$('doctorCameraVideo');
     video.muted=true;
     video.setAttribute('playsinline','');
     video.srcObject=doctorCameraStream;
     $('doctorCameraModal').classList.remove('hidden');
     await video.play();
-    status.textContent='الكاميرا جاهزة. ضع الكارت داخل الإطار الأصفر.';
+    const settings=track.getSettings?.()||{};
+    status.textContent='الكاميرا جاهزة. ضع الكارت داخل الإطار الأصفر. '+(settings.width&&settings.height?('دقة المعاينة '+settings.width+'×'+settings.height+'.'):'');
   }catch(e){
     console.error('Doctor camera error:',e);
     stopDoctorCamera();
     const reason=e?.name||'UnknownError';
     const detail=(e?.message||'').slice(0,140);
     const messages={
-      NotAllowedError:'إذن الكاميرا مرفوض أو محجوب من المتصفح/النظام.',
-      PermissionDeniedError:'إذن الكاميرا مرفوض أو محجوب من المتصفح/النظام.',
+      NotAllowedError:'المتصفح أو سياسة أمان الصفحة تمنع إذن الكاميرا.',
+      PermissionDeniedError:'المتصفح أو سياسة أمان الصفحة تمنع إذن الكاميرا.',
       NotFoundError:'لم يتم العثور على كاميرا متاحة بالجهاز.',
       NotReadableError:'الكاميرا مشغولة بتطبيق آخر أو تعذر تشغيلها من النظام.',
       OverconstrainedError:'إعداد الكاميرا المطلوب غير مدعوم بالجهاز.',
@@ -359,33 +366,49 @@ $('openDoctorCameraBtn').onclick=async()=>{
   }
 };
 $('closeDoctorCameraBtn').onclick=stopDoctorCamera;
-$('captureDoctorPhotoBtn').onclick=()=>{
-  const video=$('doctorCameraVideo'),stage=$('doctorCameraStage');
+$('captureDoctorPhotoBtn').onclick=async()=>{
+  const btn=$('captureDoctorPhotoBtn'),video=$('doctorCameraVideo');
+  if(!doctorCameraStream){$('doctorOcrStatus').textContent='الكاميرا غير مفتوحة. افتحها مرة أخرى.';return;}
   if(!video.videoWidth||!video.videoHeight){$('doctorOcrStatus').textContent='انتظر حتى تظهر صورة الكاميرا بوضوح.';return;}
-  const W=stage.clientWidth,H=stage.clientHeight,scale=Math.max(W/video.videoWidth,H/video.videoHeight);
-  const offsetX=(video.videoWidth*scale-W)/2,offsetY=(video.videoHeight*scale-H)/2;
-  const fx=W*.06,fy=H*.19,fw=W*.88,fh=H*.62;
-  const sx=(fx+offsetX)/scale,sy=(fy+offsetY)/scale,sw=fw/scale,sh=fh/scale;
-  const canvas=document.createElement('canvas');
-  canvas.width=Math.round(sw);canvas.height=Math.round(sh);
-  canvas.getContext('2d').drawImage(video,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
-  canvas.toBlob(blob=>{
-    if(!blob){$('doctorOcrStatus').textContent='تعذر تجهيز الصورة. حاول مرة أخرى.';return;}
-    doctorCardFile=new File([blob],'doctor-card.jpg',{type:'image/jpeg'});
+  btn.disabled=true;
+  $('doctorOcrStatus').textContent='جارٍ التقاط الصورة الأصلية بأعلى دقة متاحة...';
+  try{
+    const track=doctorCameraStream.getVideoTracks()[0];
+    let blob=null;
+    // Prefer the camera's still-photo pipeline for full sensor resolution; do not crop the frame.
+    if('ImageCapture' in window){
+      try{blob=await new ImageCapture(track).takePhoto();}catch(photoError){console.warn('Still-photo capture unavailable; using full video frame:',photoError);}
+    }
+    // Compatibility fallback: preserve the entire camera frame, not the yellow guide rectangle only.
+    if(!blob){
+      blob=await new Promise((resolve,reject)=>{
+        const canvas=document.createElement('canvas');
+        canvas.width=video.videoWidth;canvas.height=video.videoHeight;
+        const ctx=canvas.getContext('2d',{alpha:false});
+        if(!ctx){reject(new Error('تعذر تجهيز الصورة على هذا الجهاز.'));return;}
+        ctx.drawImage(video,0,0,canvas.width,canvas.height);
+        canvas.toBlob(result=>result?resolve(result):reject(new Error('تعذر حفظ لقطة الكاميرا.')),'image/jpeg',.94);
+      });
+    }
+    if(!blob)throw new Error('لم يتم إنشاء ملف الصورة.');
+    doctorCardFile=new File([blob],'doctor-card.jpg',{type:blob.type||'image/jpeg',lastModified:Date.now()});
     if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
     doctorCardObjectUrl=URL.createObjectURL(doctorCardFile);
     $('doctorCardPreview').src=doctorCardObjectUrl;
     $('doctorCardPreview').classList.remove('hidden');
     $('readDoctorCardBtn').disabled=false;
     $('doctorOcrText').value='';
-    $('doctorOcrStatus').textContent='تم التقاط الصورة. جارٍ حفظ نسخة مؤقتة على الجهاز...';
-    saveDoctorPhotoLocally(doctorCardFile).then(()=>{
-      $('doctorOcrStatus').textContent='تم التقاط الجزء داخل الإطار وحفظه مؤقتًا على الجهاز. اضغط «قراءة البيانات من الصورة».';
-    }).catch(()=>{
-      $('doctorOcrStatus').textContent='تم التقاط الصورة، لكن تعذر حفظ نسخة احتياطية. يمكنك قراءة الصورة الآن.';
-    });
     stopDoctorCamera();
-  },'image/jpeg',.92);
+    $('doctorOcrStatus').textContent='تم التقاط الصورة الأصلية كاملة دون قصّ. جارٍ حفظ نسخة مؤقتة على الجهاز...';
+    saveDoctorPhotoLocally(doctorCardFile).then(()=>{
+      $('doctorOcrStatus').textContent='الصورة الأصلية كاملة محفوظة مؤقتًا على الجهاز. راجعها ثم اضغط «قراءة البيانات من الصورة».';
+    }).catch(()=>{
+      $('doctorOcrStatus').textContent='تم التقاط الصورة الأصلية كاملة، لكن تعذر حفظ نسخة احتياطية. يمكنك قراءة الصورة الآن.';
+    });
+  }catch(e){
+    console.error('Doctor photo capture failed:',e);
+    $('doctorOcrStatus').textContent='تعذر التقاط الصورة: '+(e.message||'حاول مرة أخرى.');
+  }finally{btn.disabled=false;}
 };
 $('chooseDoctorPhotoBtn').onclick=()=>doctorPhotoInput.click();
 doctorPhotoInput.addEventListener('change',()=>{
