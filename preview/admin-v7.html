@@ -153,6 +153,33 @@
       <div id="customerList"></div>
     </section>
 
+    <section class="pane hidden" id="paneDoctors">
+      <h2>إدارة الأطباء</h2>
+      <div class="card">
+        <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
+        <label for="doctorUserSearch">ابحث بالاسم أو رقم الموبايل</label><input id="doctorUserSearch" placeholder="اكتب جزءًا من الاسم أو الرقم">
+        <div id="doctorUserResults" class="meta">اكتب للبحث عن حساب مسجل بالتطبيق.</div>
+        <p id="doctorSelected" class="hint">لم يتم اختيار حساب بعد.</p>
+        <label for="doctorName">اسم الطبيب الظاهر</label><input id="doctorName" placeholder="اسم الطبيب">
+        <label for="doctorSpecialty">التخصص</label><input id="doctorSpecialty" placeholder="مثال: أطفال، باطنة، أسنان">
+        <label for="doctorClinic">اسم العيادة</label><input id="doctorClinic" placeholder="اسم العيادة (اختياري)">
+        <label for="doctorAddress">العنوان</label><input id="doctorAddress" placeholder="عنوان العيادة">
+        <label for="doctorPhone">رقم الهاتف</label><input id="doctorPhone" inputmode="tel" placeholder="01xxxxxxxxx">
+        <label for="doctorBio">نبذة مختصرة</label><input id="doctorBio" placeholder="اختياري">
+        <button id="saveDoctorBtn" class="btn" type="button">حفظ الطبيب وتفعيله</button><p id="doctorFormMsg" class="msg" role="status"></p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px">إضافة مواعيد العمل</h3>
+        <label for="doctorPick">اختر الطبيب</label><select id="doctorPick" style="width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;margin-bottom:10px;font:inherit"></select>
+        <label for="doctorWeekday">اليوم</label><select id="doctorWeekday" style="width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;margin-bottom:10px;font:inherit">
+          <option value="0">الأحد</option><option value="1">الإثنين</option><option value="2">الثلاثاء</option><option value="3">الأربعاء</option><option value="4">الخميس</option><option value="5">الجمعة</option><option value="6">السبت</option></select>
+        <label for="doctorStart">من الساعة</label><input id="doctorStart" type="time" value="17:00">
+        <label for="doctorEnd">إلى الساعة</label><input id="doctorEnd" type="time" value="21:00">
+        <label for="doctorSlot">مدة الكشف بالدقائق</label><input id="doctorSlot" type="number" min="10" max="180" step="5" value="30">
+        <button id="saveDoctorHoursBtn" class="btn" type="button">حفظ مواعيد اليوم</button><p id="doctorHoursMsg" class="msg" role="status"></p>
+      </div>
+      <h3>الأطباء المسجلون</h3><div id="adminDoctorList"></div>
+    </section>
     <section class="pane hidden" id="paneSettings">
       <h2>الأسعار والعمولة</h2>
       <div class="card">
@@ -189,6 +216,7 @@
     <button id="tabDrivers">السواقين</button>
     <button id="tabRides">الرحلات</button>
     <button id="tabCustomers">الزبائن</button>
+    <button id="tabDoctors">الأطباء</button>
     <button id="tabSettings">الأسعار</button>
   </nav>
 </div>
@@ -456,7 +484,7 @@ async function runAdminPinGate(){
 let curTab = 'map';
 function showTab(name){
   curTab = name;
-  const panes = { map: 'paneMap', drivers: 'paneDrivers', rides: 'paneRides', customers: 'paneCustomers', settings: 'paneSettings' };
+  const panes = { map: 'paneMap', drivers: 'paneDrivers', rides: 'paneRides', customers: 'paneCustomers', doctors: 'paneDoctors', settings: 'paneSettings' };
   Object.entries(panes).forEach(([k, id]) => {
     $(id).classList.toggle('hidden', k !== name);
     $('tab' + k[0].toUpperCase() + k.slice(1)).classList.toggle('on', k === name);
@@ -464,12 +492,50 @@ function showTab(name){
   if (name === 'map' && map) setTimeout(() => map.invalidateSize(), 50);
   if (name === 'rides') loadRides();
   if (name === 'customers') loadCustomers();
+  if (name === 'doctors') loadAdminDoctors();
 }
 $('tabMap').onclick = () => showTab('map');
 $('tabDrivers').onclick = () => showTab('drivers');
 $('tabRides').onclick = () => showTab('rides');
 $('tabCustomers').onclick = () => showTab('customers');
+$('tabDoctors').onclick = () => showTab('doctors');
 $('tabSettings').onclick = () => showTab('settings');
+
+/* ---------- إدارة الأطباء ---------- */
+let selectedDoctorUser = null, adminDoctorsCache = [], doctorSearchTimer = null;
+$('doctorUserSearch').addEventListener('input',()=>{clearTimeout(doctorSearchTimer);doctorSearchTimer=setTimeout(searchDoctorAccounts,300);});
+async function searchDoctorAccounts(){
+ const q=$('doctorUserSearch').value.trim(),box=$('doctorUserResults');box.textContent='';selectedDoctorUser=null;$('doctorSelected').textContent='لم يتم اختيار حساب بعد.';
+ if(q.length<2){box.textContent='اكتب حرفين على الأقل للبحث.';return;}
+ let query=sb.from('profiles').select('id,name,phone,role').neq('role','admin').limit(20);
+ const digits=q.replace(/\D/g,'');query=digits.length>=2?query.ilike('phone','%'+digits+'%'):query.ilike('name','%'+q+'%');
+ const {data,error}=await query;if(error){box.textContent='تعذر البحث: '+error.message;return;}
+ if(!data?.length){box.textContent='لم يتم العثور على حساب. يجب أن يسجل الطبيب في التطبيق أولًا.';return;}
+ data.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='sm pay';b.style='display:block;width:100%;margin:5px 0;text-align:right';b.textContent=(p.name||'بدون اسم')+' • '+(p.phone||'بدون هاتف')+' • '+(p.role||'');b.onclick=()=>{selectedDoctorUser=p;$('doctorSelected').textContent='الحساب المختار: '+(p.name||'بدون اسم')+' — '+(p.phone||'');$('doctorName').value=p.name||'';$('doctorPhone').value=p.phone||'';box.textContent='تم اختيار الحساب.';};box.appendChild(b);});
+}
+$('saveDoctorBtn').onclick=async()=>{
+ const msg=$('doctorFormMsg');msg.textContent='';if(!selectedDoctorUser){msg.textContent='اختار حساب الطبيب من نتائج البحث أولًا.';return;}
+ const name=$('doctorName').value.trim(),specialty=$('doctorSpecialty').value.trim();if(name.length<2||specialty.length<2){msg.textContent='اكتب اسم الطبيب والتخصص.';return;}
+ const rawPhone=$('doctorPhone').value.trim(),phone=rawPhone?normalizePhone(rawPhone):null;if(rawPhone&&!phone){msg.textContent='رقم الهاتف غير صحيح.';return;}
+ $('saveDoctorBtn').disabled=true;
+ const {data,error}=await sb.rpc('admin_save_doctor',{p_user_id:selectedDoctorUser.id,p_display_name:name,p_specialty:specialty,p_clinic_name:$('doctorClinic').value.trim()||null,p_address:$('doctorAddress').value.trim()||null,p_phone:phone,p_bio:$('doctorBio').value.trim()||null,p_is_active:true});
+ $('saveDoctorBtn').disabled=false;if(error){msg.textContent='فشل الحفظ: '+error.message;return;}msg.textContent='تم حفظ الطبيب وتفعيله بنجاح.';await loadAdminDoctors();$('doctorPick').value=data;
+};
+async function loadAdminDoctors(){
+ const box=$('adminDoctorList');if(!box)return;box.textContent='جارٍ تحميل الأطباء...';
+ const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,clinic_name,address,phone,bio,is_active').order('created_at',{ascending:false});
+ if(error){box.textContent='تعذر تحميل الأطباء: '+error.message;return;}adminDoctorsCache=data||[];
+ const pick=$('doctorPick');pick.textContent='';const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='اختر الطبيب';pick.appendChild(placeholder);
+ adminDoctorsCache.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.display_name+' — '+d.specialty;pick.appendChild(o);});
+ box.textContent='';if(!adminDoctorsCache.length){box.textContent='لم تتم إضافة أطباء حتى الآن.';return;}
+ adminDoctorsCache.forEach(d=>{const card=document.createElement('div');card.className='card';const title=document.createElement('b');title.textContent=d.display_name+' — '+d.specialty;const detail=document.createElement('p');detail.className='meta';detail.textContent=[d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ');const status=document.createElement('p');status.className='hint';status.textContent=d.is_active?'نشط ويظهر في صفحة الحجز':'موقوف ولا يظهر في صفحة الحجز';
+ const toggle=document.createElement('button');toggle.className='sm '+(d.is_active?'stop':'go');toggle.textContent=d.is_active?'إيقاف الطبيب':'تفعيل الطبيب';toggle.onclick=async()=>{toggle.disabled=true;const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:!d.is_active});if(error){toast('تعذر تغيير الحالة: '+error.message);toggle.disabled=false;return;}toast('تم تحديث حالة الطبيب.');loadAdminDoctors();};card.append(title,detail,status,toggle);box.appendChild(card);});
+}
+$('saveDoctorHoursBtn').onclick=async()=>{
+ const msg=$('doctorHoursMsg');msg.textContent='';const doctorId=$('doctorPick').value,start=$('doctorStart').value,end=$('doctorEnd').value,slot=Number($('doctorSlot').value);
+ if(!doctorId){msg.textContent='اختر الطبيب أولًا.';return;}if(!start||!end||end<=start||!Number.isInteger(slot)||slot<10||slot>180){msg.textContent='راجع وقت البداية والنهاية ومدة الحجز.';return;}
+ $('saveDoctorHoursBtn').disabled=true;const {error}=await sb.rpc('admin_set_doctor_availability',{p_doctor_id:doctorId,p_weekday:Number($('doctorWeekday').value),p_start_time:start,p_end_time:end,p_slot_minutes:slot,p_is_active:true});$('saveDoctorHoursBtn').disabled=false;msg.textContent=error?'تعذر حفظ المواعيد: '+error.message:'تم حفظ مواعيد اليوم بنجاح.';
+};
 
 /* ---------- الخريطة ---------- */
 function initMap(){
