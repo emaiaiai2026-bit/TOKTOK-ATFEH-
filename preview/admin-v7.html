@@ -88,19 +88,11 @@
   <div class="hero"><h1>لوحة الإدارة</h1><p>خدماتنا</p></div>
   <div class="authsheet">
     <p>دخول خاص بمدير التطبيق فقط.</p>
-    <label for="adminEmail">البريد الإلكتروني المرتبط بحساب Google</label>
+    <label for="adminEmail">بريد حساب الإدارة الحالي</label>
     <input id="adminEmail" type="email" inputmode="email" autocomplete="username" placeholder="البريد الإلكتروني">
     <label for="adminPassword">كلمة المرور</label>
     <input id="adminPassword" type="password" autocomplete="current-password" placeholder="كلمة مرور الإدارة">
     <button id="emailAdminBtn" class="btn" type="button">دخول الإدارة</button>
-    <button id="setupAdminBtn" class="btn" type="button" style="margin-top:10px;background:#0B1F4B">تعيين كلمة مرور لأول مرة باستخدام Google</button>
-    <div id="passwordSetup" class="hidden" style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px">
-      <p><b>تعيين كلمة مرور حساب الإدارة</b></p>
-      <p class="hint">تم التحقق من حساب Google وصلاحية الإدارة. اختر كلمة مرور جديدة.</p>
-      <label for="newAdminPassword">كلمة المرور الجديدة</label><input id="newAdminPassword" type="password" autocomplete="new-password" placeholder="12 حرفًا أو أكثر">
-      <label for="confirmAdminPassword">تأكيد كلمة المرور</label><input id="confirmAdminPassword" type="password" autocomplete="new-password" placeholder="اكتبها مرة أخرى">
-      <button id="saveAdminPasswordBtn" class="btn" type="button">حفظ كلمة المرور</button>
-    </div>
     <p id="authMsg" class="msg" role="alert"></p>
   </div>
 </div>
@@ -134,6 +126,13 @@
 
     <section class="pane hidden" id="paneSettings">
       <h2>الأسعار والعمولة</h2>
+      <div class="card">
+        <h2 style="font-size:17px;margin:0 0 4px">استرداد حساب الإدارة</h2>
+        <p class="hint" id="googleLinkStatus">حالة ربط Google غير معروفة.</p>
+        <button id="linkGoogleBtn" class="btn" type="button">ربط Google لاسترداد الحساب</button>
+        <p id="googleLinkMsg" class="msg" role="alert"></p>
+        <p class="hint">نفّذ الربط وأنت داخل حساب الإدارة الحالي. سيُربط Google بنفس الحساب دون إنشاء مدير جديد.</p>
+      </div>
       <div class="card">
         <h2 style="font-size:17px;margin:0 0 4px">أنواع المركبات وأسعارها</h2>
         <p class="hint">الأسعار دي بتتحسب منها عمولتك. الزبون بيشوف «حسب الاتفاق».</p>
@@ -216,65 +215,70 @@ $('logoutBtn').onclick = async () => {
   location.replace('./admin-v7.html');
 };
 
-/* تعيين كلمة المرور لأول مرة: Google ثم تحديث كلمة مرور نفس المستخدم */
-$('setupAdminBtn').onclick = async () => {
-  $('authMsg').textContent = '';
-  $('setupAdminBtn').disabled = true;
-  const redirectTo = 'https://toktok-atfeh-preview.pages.dev/admin-v7.html?setup=1';
-  const { error } = await sb.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo, queryParams: { prompt: 'select_account' } }
-  });
-  if (error) {
-    $('authMsg').textContent = 'تعذر فتح تسجيل Google: ' + error.message;
-    $('setupAdminBtn').disabled = false;
-  }
-};
-async function checkAdminForPasswordSetup(){
-  if (new URLSearchParams(location.search).get('setup') !== '1') return;
-  $('authMsg').textContent = 'جارٍ التحقق من حساب Google...';
-  const { data: { user }, error } = await sb.auth.getUser();
-  if (error || !user) {
-    $('authMsg').textContent = 'تعذر استعادة جلسة Google. ارجع وحاول مرة أخرى.';
+/* ربط Google بهوية حساب الإدارة الأصلي دون إنشاء حساب جديد */
+const ORIGINAL_ADMIN_ID = '1956a65e-ef2c-4c62-9b51-b590d69c86d7';
+const ADMIN_REDIRECT = 'https://toktok-atfeh-preview.pages.dev/admin-v7.html';
+async function verifyOriginalAdmin(user){
+  if (!user || user.id !== ORIGINAL_ADMIN_ID) return false;
+  const { data: prof, error } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
+  return !error && prof?.role === 'admin';
+}
+function googleIdentityLinked(user){
+  return (user?.identities || []).some(x => x.provider === 'google');
+}
+async function updateGoogleLinkStatus(){
+  const { data: { user } } = await sb.auth.getUser();
+  const status = $('googleLinkStatus');
+  if (!status) return;
+  status.textContent = googleIdentityLinked(user) ? 'Google مربوط بالحساب الأصلي.' : 'Google غير مربوط حتى الآن.';
+  $('linkGoogleBtn').textContent = googleIdentityLinked(user) ? 'تحديث ربط Google' : 'ربط Google لاسترداد الحساب';
+}
+$('linkGoogleBtn').onclick = async () => {
+  $('googleLinkMsg').textContent = '';
+  const { data: { user }, error: ue } = await sb.auth.getUser();
+  if (ue || !(await verifyOriginalAdmin(user))) {
+    $('googleLinkMsg').textContent = 'لازم تكون مسجلًا بحساب الإدارة الأصلي أولًا.';
     return;
   }
-  const { data: prof, error: pe } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle();
-  if (pe || !prof || prof.role !== 'admin') {
-    $('authMsg').textContent = 'هذا الحساب ليس حساب الإدارة المصرح له.';
+  if (googleIdentityLinked(user)) {
+    $('googleLinkMsg').textContent = 'Google مربوط بالفعل بنفس حساب الإدارة.';
+    return;
+  }
+  $('linkGoogleBtn').disabled = true;
+  const { error } = await sb.auth.linkIdentity({
+    provider: 'google',
+    options: { redirectTo: ADMIN_REDIRECT + '?link_google=1', queryParams: { prompt: 'select_account' } }
+  });
+  if (error) {
+    $('googleLinkMsg').textContent = 'تعذر بدء الربط: ' + error.message + ' — تأكد من تفعيل ربط الهويات في إعدادات Supabase.';
+    $('linkGoogleBtn').disabled = false;
+  }
+};
+async function checkGoogleLinkCallback(){
+  const params = new URLSearchParams(location.search);
+  if (params.get('link_google') !== '1') return;
+  $('authMsg').textContent = 'جارٍ التحقق من ربط Google...';
+  const { data: { user }, error } = await sb.auth.getUser();
+  if (error || !(await verifyOriginalAdmin(user))) {
+    $('authMsg').textContent = 'فشل التحقق: لم يتم ربط Google بحساب الإدارة الأصلي. لم يتم تغيير صلاحيات أي حساب.';
     await sb.auth.signOut();
     history.replaceState({}, '', location.pathname);
     return;
   }
-  if (!user.email) {
-    $('authMsg').textContent = 'حساب Google لا يحتوي على بريد إلكتروني صالح.';
-    await sb.auth.signOut();
+  if (!googleIdentityLinked(user)) {
+    $('authMsg').textContent = 'لم يظهر ربط Google في الحساب. لم يتم تغيير أي بيانات.';
+    history.replaceState({}, '', location.pathname);
     return;
   }
-  $('adminEmail').value = user.email;
-  $('passwordSetup').classList.remove('hidden');
-  $('setupAdminBtn').classList.add('hidden');
-  $('authMsg').textContent = 'تم التحقق من حساب الإدارة. عيّن كلمة المرور الآن.';
-}
-$('saveAdminPasswordBtn').onclick = async () => {
-  $('authMsg').textContent = '';
-  const p1 = $('newAdminPassword').value, p2 = $('confirmAdminPassword').value;
-  if (p1.length < 12) { $('authMsg').textContent = 'كلمة المرور لازم تكون 12 حرفًا على الأقل.'; return; }
-  if (p1 !== p2) { $('authMsg').textContent = 'كلمتا المرور غير متطابقتين.'; return; }
-  $('saveAdminPasswordBtn').disabled = true;
-  const { error } = await sb.auth.updateUser({ password: p1 });
-  if (error) {
-    $('authMsg').textContent = 'لم يتم حفظ كلمة المرور: ' + error.message;
-    $('saveAdminPasswordBtn').disabled = false;
-    return;
-  }
-  await sb.auth.signOut();
   history.replaceState({}, '', location.pathname);
-  $('passwordSetup').classList.add('hidden');
-  $('setupAdminBtn').classList.remove('hidden');
-  $('newAdminPassword').value = ''; $('confirmAdminPassword').value = ''; $('adminPassword').value = '';
-  $('authMsg').textContent = 'تم حفظ كلمة المرور. سجّل الدخول بالبريد الإلكتروني وكلمة المرور الجديدة.';
-  $('saveAdminPasswordBtn').disabled = false;
-};
+  $('authScreen').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  initMap(); loadSettings(); loadVehicleTypes(); refresh();
+  clearInterval(timer); timer = setInterval(refresh, 10000);
+  showTab('settings');
+  toast('تم ربط Google بنفس حساب الإدارة بنجاح.');
+  updateGoogleLinkStatus();
+}
 async function start(){
   const { data: { user }, error: userError } = await sb.auth.getUser();
   if (userError || !user) return;
@@ -584,8 +588,8 @@ $('saveSettings').onclick = async () => {
   toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
 };
 
-// لا نفتح لوحة الإدارة تلقائيًا بجلسة Google؛ يلزم البريد وكلمة المرور.
-checkAdminForPasswordSetup();
+// التحقق من نتيجة ربط Google بعد العودة من OAuth.
+checkGoogleLinkCallback();
 </script>
 </body>
 </html>
