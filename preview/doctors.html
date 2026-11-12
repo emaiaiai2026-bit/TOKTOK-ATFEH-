@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0B1F4B"><title>حجز عند دكتور | خدماتنا</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F4B;--blue:#1A56DB;--gold:#FFB400;--bg:#EAF1FF;--line:#DCE3F0;--muted:#64748b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:Cairo,system-ui,sans-serif}
+header{background:var(--navy);color:white;padding:22px 18px 28px}header a{color:#dbeafe;text-decoration:none}h1{font-size:25px;margin:12px 0 4px}header p{margin:0;color:#c6d4f0;font-size:13px}
+main{max-width:720px;margin:-12px auto 30px;padding:0 12px}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+h2{font-size:18px;margin:0 0 12px}.muted{color:var(--muted);font-size:13px}.doctor{border:1px solid var(--line);border-radius:14px;padding:13px;margin:9px 0;cursor:pointer}.doctor.selected{border:2px solid var(--blue);background:#f5f8ff}.doctor b{display:block}.doctor small{color:var(--muted)}
+label{display:block;font-weight:700;font-size:13px;margin:12px 0 5px}input,select,textarea{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:11px;background:#fff;color:var(--navy)}textarea{min-height:75px;resize:vertical}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px;font-weight:700}.primary{width:100%;background:var(--blue);color:#fff;margin-top:14px}.primary:disabled{opacity:.5}.slotgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.slot{background:#eef3ff;color:var(--navy);border:1px solid var(--line);padding:9px 4px}.slot.active{background:var(--blue);color:#fff;border-color:var(--blue)}.empty{padding:15px;text-align:center;color:var(--muted);font-size:14px}.booking{border-bottom:1px solid var(--line);padding:11px 0}.booking:last-child{border:0}.status{display:inline-block;border-radius:9px;background:#fff1c2;padding:2px 9px;font-size:12px;font-weight:700}
+#msg{position:fixed;bottom:16px;left:12px;right:12px;max-width:650px;margin:auto;background:var(--navy);color:#fff;padding:12px 15px;border-radius:12px;text-align:center;z-index:5} [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><a href="./index.html">← الرجوع للخدمات</a><h1>حجز عند دكتور</h1><p>اختار الطبيب والموعد المناسب، وتابع حالة حجزك من نفس الحساب.</p></header>
+<main>
+<section class="panel"><h2>الأطباء المتاحون</h2><div id="doctors" class="muted">جاري تحميل الأطباء...</div></section>
+<section class="panel" id="bookingPanel" hidden>
+<h2 id="doctorTitle">اختار موعد</h2><div id="doctorInfo" class="muted"></div>
+<label for="date">تاريخ الحجز</label><input id="date" type="date">
+<div id="slots" class="slotgrid"><div class="empty">اختار تاريخًا لعرض المواعيد</div></div>
+<label for="patientName">اسم المريض</label><input id="patientName" maxlength="120" autocomplete="name" placeholder="الاسم بالكامل">
+<label for="patientPhone">رقم الموبايل</label><input id="patientPhone" inputmode="numeric" maxlength="11" autocomplete="tel" placeholder="01xxxxxxxxx">
+<label for="notes">ملاحظات (اختياري)</label><textarea id="notes" maxlength="1000" placeholder="اكتب أي معلومة تساعد الطبيب"></textarea>
+<button id="bookBtn" class="primary" disabled>تأكيد الحجز</button>
+</section>
+<section class="panel"><h2>حجوزاتي</h2><div id="myBookings" class="muted">جاري تحميل الحجوزات...</div></section>
+</main><div id="msg" hidden role="status"></div>
+<script>
+(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
+async function init(){
+const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co','sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT');
+const $=id=>document.getElementById(id);let user=null,doctors=[],selected=null,selectedSlot=null,availability=[];
+function msg(t){$('msg').textContent=t;$('msg').hidden=false;clearTimeout(msg.t);msg.t=setTimeout(()=>$('msg').hidden=true,4000)}
+const {data:{user:u},error:authError}=await sb.auth.getUser();user=u;
+if(authError||!user){location.replace('./index.html');return}
+const {data:profile}=await sb.from('profiles').select('name,phone').eq('id',user.id).maybeSingle();
+if(profile){$('patientName').value=profile.name||'';$('patientPhone').value=profile.phone||''}
+$('date').min=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+async function loadDoctors(){
+const {data,error}=await sb.from('doctor_profiles').select('id,display_name,specialty,clinic_name,address,phone,bio').eq('is_active',true).order('display_name');
+if(error){$('doctors').textContent='تعذر تحميل الأطباء: '+error.message;return}
+doctors=data||[];const box=$('doctors');box.innerHTML='';
+if(!doctors.length){box.innerHTML='<div class="empty">مفيش أطباء متاحين للحجز حاليًا. هيظهروا هنا بعد إضافة الأطباء وتفعيلهم من الإدارة.</div>';return}
+doctors.forEach(d=>{const el=document.createElement('button');el.type='button';el.className='doctor'+(selected&&selected.id===d.id?' selected':'');el.style.width='100%';el.style.textAlign='right';el.innerHTML='<b>'+esc(d.display_name)+'</b><small>'+esc(d.specialty)+(d.clinic_name?' • '+esc(d.clinic_name):'')+'</small>'+(d.address?'<div class="muted">'+esc(d.address)+'</div>':'');el.onclick=()=>chooseDoctor(d);box.appendChild(el)})
+}
+async function chooseDoctor(d){
+selected=d;selectedSlot=null;$('bookingPanel').hidden=false;$('doctorTitle').textContent=d.display_name+' — اختار الموعد';$('doctorInfo').textContent=[d.specialty,d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ')+(d.bio?' — '+d.bio:'');
+$('bookBtn').disabled=true;await loadDoctors();await loadAvailability();
+}
+async function loadAvailability(){
+const {data,error}=await sb.from('doctor_availability').select('weekday,start_time,end_time,slot_minutes').eq('doctor_id',selected.id).eq('is_active',true).order('weekday');
+if(error){$('slots').textContent='تعذر تحميل المواعيد: '+error.message;return}availability=data||[];renderSlots()
+}
+function renderSlots(){
+selectedSlot=null;$('bookBtn').disabled=true;const box=$('slots');box.innerHTML='';
+const val=$('date').value;if(!val){box.innerHTML='<div class="empty">اختار تاريخًا لعرض المواعيد</div>';return}
+const parts=val.split('-').map(Number);const day=new Date(parts[0],parts[1]-1,parts[2]).getDay();const rows=availability.filter(a=>Number(a.weekday)===day);
+if(!rows.length){box.innerHTML='<div class="empty">مفيش مواعيد عمل للطبيب في اليوم ده.</div>';return}
+const now=new Date();let found=0;
+rows.forEach(a=>{const start=a.start_time.slice(0,5),end=a.end_time.slice(0,5),[sh,sm]=start.split(':').map(Number),[eh,em]=end.split(':').map(Number);let mins=sh*60+sm;const last=eh*60+em,step=Number(a.slot_minutes)||30;
+while(mins<last){const hh=String(Math.floor(mins/60)).padStart(2,'0'),mm=String(mins%60).padStart(2,'0'),clock=hh+':'+mm;const local=new Date(parts[0],parts[1]-1,parts[2],Math.floor(mins/60),mins%60);if(local>now){const b=document.createElement('button');b.type='button';b.className='slot';b.textContent=clock;b.onclick=async()=>{document.querySelectorAll('.slot').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedSlot=local;$('bookBtn').disabled=false;const {data:busy}=await sb.from('doctor_appointments').select('appointment_at').eq('doctor_id',selected.id).in('status',['pending','confirmed','completed']).gte('appointment_at',new Date(local.getTime()-60000).toISOString()).lt('appointment_at',new Date(local.getTime()+60000).toISOString()).limit(1);if(busy&&busy.length){b.disabled=true;b.textContent='محجوز';b.classList.remove('active');selectedSlot=null;$('bookBtn').disabled=true;msg('الموعد اتحجز للتو، اختار موعدًا آخر.')}};box.appendChild(b);found++}mins+=step}
+});
+if(!found)box.innerHTML='<div class="empty">لا توجد مواعيد مستقبلية متاحة في هذا اليوم.</div>'
+}
+$('date').addEventListener('change',renderSlots);
+$('bookBtn').onclick=async()=>{
+const name=$('patientName').value.trim(),phone=$('patientPhone').value.replace(/\s/g,''),notes=$('notes').value.trim();
+if(!selected||!selectedSlot)return msg('اختار الطبيب والموعد أولاً');
+if(name.length<2)return msg('اكتب اسم المريض بشكل صحيح');
+if(!/^01[0125][0-9]{8}$/.test(phone))return msg('اكتب رقم موبايل مصري صحيح من 11 رقم');
+$('bookBtn').disabled=true;$('bookBtn').textContent='جاري تأكيد الحجز...';
+const {data,error}=await sb.rpc('book_doctor_appointment',{p_doctor_id:selected.id,p_appointment_at:selectedSlot.toISOString(),p_patient_name:name,p_patient_phone:phone,p_notes:notes||null});
+$('bookBtn').textContent='تأكيد الحجز';
+if(error){msg(error.message.includes('already booked')?'الموعد اتحجز بالفعل، اختار موعدًا آخر.':'تعذر الحجز: '+error.message);$('bookBtn').disabled=false;return}
+msg('تم إرسال طلب الحجز بنجاح.');selectedSlot=null;$('bookBtn').disabled=true;await renderBookings();await renderSlots()
+};
+async function renderBookings(){
+const {data,error}=await sb.from('doctor_appointments').select('id,appointment_at,status,patient_name,doctor_id,doctor_profiles(display_name,specialty)').eq('patient_id',user.id).order('appointment_at',{ascending:false}).limit(30);
+const box=$('myBookings');box.innerHTML='';
+if(error){box.textContent='تعذر تحميل الحجوزات: '+error.message;return}
+if(!data||!data.length){box.innerHTML='<div class="empty">لسه مفيش حجوزات.</div>';return}
+const labels={pending:'في انتظار تأكيد العيادة',confirmed:'تم التأكيد',rejected:'مرفوض',cancelled:'ملغي',completed:'مكتمل'};
+data.forEach(a=>{const d=document.createElement('div');d.className='booking';const date=new Date(a.appointment_at);d.innerHTML='<b>'+esc(a.doctor_profiles?.display_name||'الطبيب')+'</b><div class="muted">'+date.toLocaleDateString('ar-EG')+' — '+date.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})+'</div><span class="status">'+(labels[a.status]||esc(a.status))+'</span>';box.appendChild(d)})
+}
+await loadDoctors();await renderBookings();
+}
+</script>
+</body></html>
