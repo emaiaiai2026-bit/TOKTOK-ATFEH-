@@ -220,7 +220,7 @@ $('logoutBtn').onclick = async () => {
 $('setupAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
   $('setupAdminBtn').disabled = true;
-  const redirectTo = location.origin + location.pathname + '?setup=1';
+  const redirectTo = 'https://toktok-atfeh-preview.pages.dev/admin-v7.html?setup=1';
   const { error } = await sb.auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo, queryParams: { prompt: 'select_account' } }
