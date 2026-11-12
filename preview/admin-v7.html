@@ -898,8 +898,22 @@ $('saveSettings').onclick = async () => {
   toast(error ? 'ما اتحفظش: ' + error.message : 'اتحفظت. الأسعار الجديدة شغالة دلوقتي');
 };
 
-// التحقق من نتيجة ربط Google بعد العودة من OAuth.
-checkGoogleLinkCallback();
+// استعادة جلسة الإدارة عند فتح الصفحة أو إعادة تحميلها (مثل الرجوع من كاميرا الهاتف).
+// روابط OAuth تُعالج بمسارها الحالي، أما الفتح العادي فيستعيد الجلسة المحفوظة ثم يطلب PIN كالمعتاد.
+(async () => {
+  const params = new URLSearchParams(location.search);
+  const isOAuthCallback = params.get('link_google') === '1' || params.get('admin_google_login') === '1';
+  try {
+    if (isOAuthCallback) {
+      await checkGoogleLinkCallback();
+    } else {
+      await start();
+    }
+  } catch (error) {
+    $('authMsg').textContent = 'تعذر استعادة جلسة الإدارة. حدّث الصفحة وحاول مرة أخرى.';
+    console.error('Admin session restore failed:', error);
+  }
+})();
 </script>
 </body>
 </html>
