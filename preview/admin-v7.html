@@ -157,6 +157,16 @@
       <h2>إدارة الأطباء</h2>
       <div class="card">
         <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
+        <div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#F8FAFF">
+          <b>📷 تصوير كارت الطبيب أو الروشتة</b>
+          <p class="hint" style="margin:6px 0 10px">صوّر الجزء المطبوع الذي يحتوي على بيانات الطبيب. سنحاول قراءة الاسم والتخصص والهاتف والعنوان تلقائيًا، ثم راجعها قبل الحفظ.</p>
+          <input id="doctorCardPhoto" type="file" accept="image/*" capture="environment" style="height:auto;padding:10px;background:#fff">
+          <img id="doctorCardPreview" alt="معاينة صورة بيانات الطبيب" class="hidden" style="display:block;max-width:100%;max-height:240px;object-fit:contain;margin:8px auto;border-radius:10px">
+          <button id="readDoctorCardBtn" class="sm pay" type="button" style="width:100%;margin-top:6px">قراءة البيانات من الصورة</button>
+          <p id="doctorOcrStatus" class="hint" role="status" style="margin:8px 0 0">الصورة تُعالج على الموبايل، ولن تُحفظ في قاعدة البيانات.</p>
+          <label for="doctorOcrText" style="margin-top:10px">النص الذي قرأته الكاميرا (للمراجعة)</label>
+          <textarea id="doctorOcrText" rows="4" readonly style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px"></textarea>
+        </div>
         <label for="doctorUserSearch">ابحث بالاسم أو رقم الموبايل</label><input id="doctorUserSearch" placeholder="اكتب جزءًا من الاسم أو الرقم">
         <div id="doctorUserResults" class="meta">اكتب للبحث عن حساب مسجل بالتطبيق.</div>
         <p id="doctorSelected" class="hint">لم يتم اختيار حساب بعد.</p>
@@ -247,6 +257,87 @@ function normalizePhone(raw){
   else if (p.length === 10 && p.startsWith('1')) p = '0' + p;
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
+
+// قراءة بيانات كارت الطبيب محليًا داخل المتصفح باستخدام OCR.
+let doctorCardObjectUrl = null, tesseractLoadPromise = null;
+$('doctorCardPhoto').addEventListener('change', () => {
+  const file = $('doctorCardPhoto').files?.[0];
+  $('doctorOcrText').value = '';
+  $('doctorOcrStatus').textContent = '';
+  if (doctorCardObjectUrl) URL.revokeObjectURL(doctorCardObjectUrl);
+  doctorCardObjectUrl = null;
+  if (!file) { $('doctorCardPreview').classList.add('hidden'); return; }
+  if (!file.type.startsWith('image/')) { $('doctorOcrStatus').textContent = 'اختار صورة بصيغة JPG أو PNG.'; return; }
+  if (file.size > 12 * 1024 * 1024) { $('doctorOcrStatus').textContent = 'حجم الصورة كبير. اختار صورة أقل من 12 ميجابايت.'; $('doctorCardPhoto').value=''; return; }
+  doctorCardObjectUrl = URL.createObjectURL(file);
+  $('doctorCardPreview').src = doctorCardObjectUrl;
+  $('doctorCardPreview').classList.remove('hidden');
+  $('doctorOcrStatus').textContent = 'الصورة جاهزة. اضغط «قراءة البيانات من الصورة».';
+});
+
+async function loadDoctorOcr(){
+  if (window.Tesseract) return window.Tesseract;
+  if (!tesseractLoadPromise) tesseractLoadPromise = new Promise((resolve,reject)=>{
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    s.onload=()=>resolve(window.Tesseract);
+    s.onerror=()=>reject(new Error('تعذر تحميل أداة قراءة الصور. تأكد من اتصال الإنترنت.'));
+    document.head.appendChild(s);
+  });
+  return tesseractLoadPromise;
+}
+function fillDoctorField(id, value){
+  if (!value) return;
+  const el=$(id);
+  if (!el.value.trim()) el.value=value.trim();
+}
+function applyDoctorOcrText(raw){
+  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const labeled=(patterns)=>{
+    for(const line of lines){
+      for(const pattern of patterns){
+        const m=line.match(pattern);
+        if(m?.[1]) return m[1].replace(/[|•]+$/,'').trim();
+      }
+    }
+    return '';
+  };
+  const name=labeled([/(?:اسم\s*الطبيب|دكتور|الدكتور|doctor\s*name|dr\.?)[\s:：\-]+(.+)/i]);
+  const specialty=labeled([/(?:التخصص|التخصصات|speciality|specialty)[\s:：\-]+(.+)/i]);
+  const clinic=labeled([/(?:اسم\s*العيادة|العيادة|clinic)[\s:：\-]+(.+)/i]);
+  const address=labeled([/(?:العنوان|عنوان\s*العيادة|address)[\s:：\-]+(.+)/i]);
+  const phoneMatch=raw.match(/(?:\+?20\s*)?0?1[0125][\s\-()]*\d[\d\s\-()]{6,12}/);
+  if(name) fillDoctorField('doctorName',name);
+  if(specialty) fillDoctorField('doctorSpecialty',specialty);
+  if(clinic) fillDoctorField('doctorClinic',clinic);
+  if(address) fillDoctorField('doctorAddress',address);
+  if(phoneMatch){
+    const phone=normalizePhone(phoneMatch[0]);
+    if(phone) fillDoctorField('doctorPhone',phone);
+  }
+  return {name:!!name,specialty:!!specialty,clinic:!!clinic,address:!!address,phone:!!phoneMatch};
+}
+$('readDoctorCardBtn').onclick=async()=>{
+  const file=$('doctorCardPhoto').files?.[0],btn=$('readDoctorCardBtn'),status=$('doctorOcrStatus');
+  if(!file){status.textContent='صوّر الكارت أو اختار صورة الأول.';return;}
+  btn.disabled=true;status.textContent='جارٍ تجهيز قارئ النصوص...';
+  try{
+    const T=await loadDoctorOcr();
+    status.textContent='جارٍ قراءة الصورة. قد تستغرق العملية بعض الوقت حسب سرعة الموبايل.';
+    const result=await T.recognize(file,'ara+eng',{logger:m=>{
+      if(m.status==='recognizing text'&&m.progress!=null) status.textContent='جارٍ قراءة الصورة: '+Math.round(m.progress*100)+'٪';
+    }});
+    const raw=result?.data?.text||'';
+    $('doctorOcrText').value=raw;
+    if(!raw.trim()){status.textContent='لم نتمكن من قراءة نص واضح. جرّب صورة أوضح وبإضاءة جيدة.';return;}
+    const found=applyDoctorOcrText(raw);
+    const count=Object.values(found).filter(Boolean).length;
+    status.textContent=count
+      ? 'تم استخراج بعض البيانات وملء الخانات المتاحة. راجع كل خانة وصحّحها قبل الحفظ.'
+      : 'تمت قراءة النص، لكن لم نتعرف تلقائيًا على خانات البيانات. راجع النص وانقل البيانات يدويًا للخانات.';
+  }catch(e){status.textContent='تعذرت قراءة الصورة: '+(e.message||'خطأ غير معروف');}
+  finally{btn.disabled=false;}
+};
 
  
 /* ---------- دخول الإدارة بالبريد وكلمة المرور ---------- */
