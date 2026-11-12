@@ -178,7 +178,7 @@
         <label for="doctorSlot">مدة الكشف بالدقائق</label><input id="doctorSlot" type="number" min="10" max="180" step="5" value="30">
         <button id="saveDoctorHoursBtn" class="btn" type="button">حفظ مواعيد اليوم</button><p id="doctorHoursMsg" class="msg" role="status"></p>
       </div>
-      <h3>الأطباء المسجلون</h3><div id="adminDoctorList"></div>
+      <h3>طلبات الانضمام والأطباء</h3><p class="hint">طلبات الأطباء الجديدة تظهر هنا غير مفعّلة. راجع البيانات ثم اضغط تفعيل الطبيب.</p><div id="adminDoctorList"></div>
     </section>
     <section class="pane hidden" id="paneSettings">
       <h2>الأسعار والعمولة</h2>
@@ -523,12 +523,12 @@ $('saveDoctorBtn').onclick=async()=>{
 };
 async function loadAdminDoctors(){
  const box=$('adminDoctorList');if(!box)return;box.textContent='جارٍ تحميل الأطباء...';
- const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,clinic_name,address,phone,bio,is_active').order('created_at',{ascending:false});
+ const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,clinic_name,address,phone,bio,is_active,self_registered').order('created_at',{ascending:false});
  if(error){box.textContent='تعذر تحميل الأطباء: '+error.message;return;}adminDoctorsCache=data||[];
  const pick=$('doctorPick');pick.textContent='';const placeholder=document.createElement('option');placeholder.value='';placeholder.textContent='اختر الطبيب';pick.appendChild(placeholder);
  adminDoctorsCache.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.display_name+' — '+d.specialty;pick.appendChild(o);});
  box.textContent='';if(!adminDoctorsCache.length){box.textContent='لم تتم إضافة أطباء حتى الآن.';return;}
- adminDoctorsCache.forEach(d=>{const card=document.createElement('div');card.className='card';const title=document.createElement('b');title.textContent=d.display_name+' — '+d.specialty;const detail=document.createElement('p');detail.className='meta';detail.textContent=[d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ');const status=document.createElement('p');status.className='hint';status.textContent=d.is_active?'نشط ويظهر في صفحة الحجز':'موقوف ولا يظهر في صفحة الحجز';
+ adminDoctorsCache.forEach(d=>{const card=document.createElement('div');card.className='card';const title=document.createElement('b');title.textContent=d.display_name+' — '+d.specialty;const detail=document.createElement('p');detail.className='meta';detail.textContent=[d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ');const status=document.createElement('p');status.className='hint';status.textContent=d.is_active?'نشط ويظهر في صفحة الحجز':(d.self_registered?'طلب انضمام جديد — بانتظار مراجعة الإدارة':'غير مفعّل ولا يظهر في صفحة الحجز');
  const toggle=document.createElement('button');toggle.className='sm '+(d.is_active?'stop':'go');toggle.textContent=d.is_active?'إيقاف الطبيب':'تفعيل الطبيب';toggle.onclick=async()=>{toggle.disabled=true;const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:!d.is_active});if(error){toast('تعذر تغيير الحالة: '+error.message);toggle.disabled=false;return;}toast('تم تحديث حالة الطبيب.');loadAdminDoctors();};card.append(title,detail,status,toggle);box.appendChild(card);});
 }
 $('saveDoctorHoursBtn').onclick=async()=>{
