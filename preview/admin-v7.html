@@ -93,6 +93,9 @@
     <label for="adminPassword">كلمة المرور</label>
     <input id="adminPassword" type="password" autocomplete="current-password" placeholder="كلمة مرور الإدارة">
     <button id="emailAdminBtn" class="btn" type="button">دخول الإدارة</button>
+    <div style="text-align:center;margin:10px 0;color:var(--muted);font-size:13px">أو</div>
+    <button id="googleAdminBtn" class="btn" type="button" style="background:#fff;color:#1f2937;border:1px solid #cbd5e1">المتابعة باستخدام Google</button>
+    <p class="hint" style="text-align:center;margin-top:8px">استخدم حساب Google المرتبط بحساب الإدارة الأصلي فقط.</p>
     <p id="authMsg" class="msg" role="alert"></p>
   </div>
 </div>
@@ -210,6 +213,23 @@ $('emailAdminBtn').onclick = async () => {
   $('emailAdminBtn').disabled = false;
 };
 $('adminPassword').addEventListener('keydown', e => { if (e.key === 'Enter') $('emailAdminBtn').click(); });
+
+/* دخول Google: لا يُسمح إلا بهوية المدير الأصلي المرتبطة مسبقًا */
+$('googleAdminBtn').onclick = async () => {
+  $('authMsg').textContent = '';
+  $('googleAdminBtn').disabled = true;
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: ADMIN_REDIRECT + '?admin_google_login=1',
+      queryParams: { prompt: 'select_account' }
+    }
+  });
+  if (error) {
+    $('authMsg').textContent = 'تعذر بدء الدخول باستخدام Google: ' + error.message;
+    $('googleAdminBtn').disabled = false;
+  }
+};
 $('logoutBtn').onclick = async () => {
   await sb.auth.signOut();
   location.replace('./admin-v7.html');
@@ -256,21 +276,30 @@ $('linkGoogleBtn').onclick = async () => {
 };
 async function checkGoogleLinkCallback(){
   const params = new URLSearchParams(location.search);
-  if (params.get('link_google') !== '1') return;
-  $('authMsg').textContent = 'جارٍ التحقق من ربط Google...';
+  const isLinkCallback = params.get('link_google') === '1';
+  const isLoginCallback = params.get('admin_google_login') === '1';
+  if (!isLinkCallback && !isLoginCallback) return;
+  $('authMsg').textContent = isLoginCallback ? 'جارٍ التحقق من حساب Google...' : 'جارٍ التحقق من ربط Google...';
   const { data: { user }, error } = await sb.auth.getUser();
   if (error || !(await verifyOriginalAdmin(user))) {
-    $('authMsg').textContent = 'فشل التحقق: لم يتم ربط Google بحساب الإدارة الأصلي. لم يتم تغيير صلاحيات أي حساب.';
+    $('authMsg').textContent = isLoginCallback
+      ? 'حساب Google ده غير مرتبط بحساب الإدارة الأصلي. استخدم حساب Google الذي ربطته بالإدارة.'
+      : 'فشل التحقق: لم يتم ربط Google بحساب الإدارة الأصلي. لم يتم تغيير صلاحيات أي حساب.';
     await sb.auth.signOut();
     history.replaceState({}, '', location.pathname);
     return;
   }
   if (!googleIdentityLinked(user)) {
-    $('authMsg').textContent = 'لم يظهر ربط Google في الحساب. لم يتم تغيير أي بيانات.';
+    $('authMsg').textContent = 'حساب Google لم يتم التحقق من ارتباطه بحساب الإدارة. لم يتم تغيير أي بيانات.';
+    await sb.auth.signOut();
     history.replaceState({}, '', location.pathname);
     return;
   }
   history.replaceState({}, '', location.pathname);
+  if (isLoginCallback) {
+    await start();
+    return;
+  }
   $('authScreen').classList.add('hidden');
   $('app').classList.remove('hidden');
   initMap(); loadSettings(); loadVehicleTypes(); refresh();
