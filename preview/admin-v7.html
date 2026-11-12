@@ -198,7 +198,7 @@ $('emailAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
   const email = $('adminEmail').value.trim().toLowerCase();
   const password = $('adminPassword').value;
-  if (!email || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) { $('authMsg').textContent = 'اكتب بريدًا إلكترونيًا صحيحًا.'; return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $('authMsg').textContent = 'اكتب بريدًا إلكترونيًا صحيحًا.'; return; }
   if (!password) { $('authMsg').textContent = 'اكتب كلمة المرور.'; return; }
   $('emailAdminBtn').disabled = true;
   const { error } = await sb.auth.signInWithPassword({ email, password });
