@@ -394,7 +394,7 @@ async function runAdminPinGate(){
       if (pinMode === 'setup') {
         const pin = $('newAdminPin').value;
         const confirmPin = $('confirmAdminPin').value;
-        if (!/^\\d{6}$/.test(pin)) {
+        if (!/^\d{6}$/.test(pin)) {
           $('pinMsg').textContent = 'اكتب 6 أرقام بالضبط.';
           $('submitAdminPin').disabled = false; return;
         }
@@ -412,7 +412,7 @@ async function runAdminPinGate(){
         return;
       }
       const pin = $('adminPin').value;
-      if (!/^\\d{6}$/.test(pin)) {
+      if (!/^\d{6}$/.test(pin)) {
         $('pinMsg').textContent = 'اكتب 6 أرقام بالضبط.';
         $('submitAdminPin').disabled = false; return;
       }
