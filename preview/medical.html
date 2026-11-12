@@ -49,6 +49,12 @@ const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co'
 const $=id=>document.getElementById(id);let user=null;
 function msg(t){$('msg').textContent=t;$('msg').hidden=false;clearTimeout(msg.t);msg.t=setTimeout(()=>$('msg').hidden=true,4500)}
 const {data:{user:u},error}=await sb.auth.getUser();user=u;
+if(new URLSearchParams(location.search).get('join')==='doctor'){
+ $('choosePanel').hidden=true;
+ $('doctorPanel').hidden=false;
+ $('doctorPanel').scrollIntoView({behavior:'smooth'});
+}
+
 if(error||!user){location.replace('./index.html');return}
 const {data:profile}=await sb.from('profiles').select('name,phone').eq('id',user.id).maybeSingle();
 $('name').value=profile?.name||'';
