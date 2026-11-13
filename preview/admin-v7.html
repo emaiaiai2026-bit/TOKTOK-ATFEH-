@@ -335,7 +335,6 @@ $('googleAdminBtn').onclick = async () => {
     provider: 'google',
     options: {
       redirectTo: ADMIN_REDIRECT + '?admin_google_login=1',
-      queryParams: { prompt: 'select_account' }
     }
   });
   if (error) {
