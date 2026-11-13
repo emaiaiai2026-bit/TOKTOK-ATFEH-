@@ -86,6 +86,9 @@
 
   /* Keep the fixed notification bell clear of the admin header's logout button. */
   #siteNotificationBell{top:calc(76px + env(safe-area-inset-top))!important;left:14px!important}
+  /* Doctor data entry, schedules and booking operations belong to the medical service, not admin. */
+  #paneDoctors>.card{display:none!important}
+  #paneDoctors>h3,#paneDoctors>p.hint{display:none!important}
 </style>
 </head>
 <body>
@@ -157,7 +160,7 @@
     </section>
 
     <section class="pane hidden" id="paneDoctors">
-      <h2>إدارة الأطباء</h2>
+      <h2>مراجعة طلبات الأطباء</h2>
       <div class="card">
         <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
         <div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#F8FAFF">
@@ -205,7 +208,7 @@
         <label for="doctorSlot">مدة الكشف بالدقائق</label><input id="doctorSlot" type="number" min="10" max="180" step="5" value="30">
         <button id="saveDoctorHoursBtn" class="btn" type="button">حفظ مواعيد اليوم</button><p id="doctorHoursMsg" class="msg" role="status"></p>
       </div>
-      <h3>طلبات الانضمام والأطباء</h3><p class="hint">طلبات الأطباء الجديدة تظهر هنا غير مفعّلة. راجع البيانات ثم اضغط تفعيل الطبيب.</p><div id="adminDoctorList"></div>
+      <div id="adminDoctorList"></div>
     </section>
     <section class="pane hidden" id="paneSettings">
       <h2>الأسعار والعمولة</h2>
@@ -243,7 +246,7 @@
     <button id="tabDrivers">السواقين</button>
     <button id="tabRides">الرحلات</button>
     <button id="tabCustomers">الزبائن</button>
-    <button id="tabDoctors">الأطباء</button>
+    <button id="tabDoctors">طلبات الأطباء</button>
     <button id="tabSettings">الأسعار</button>
   </nav>
 </div>
@@ -592,7 +595,7 @@ async function loadAdminDoctors(){
  adminDoctorsCache.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent=d.display_name+' — '+d.specialty;pick.appendChild(o);});
  box.textContent='';if(!adminDoctorsCache.length){box.textContent='لم تتم إضافة أطباء حتى الآن.';return;}
  adminDoctorsCache.forEach(d=>{const card=document.createElement('div');card.className='card';const title=document.createElement('b');title.textContent=d.display_name+' — '+d.specialty;const detail=document.createElement('p');detail.className='meta';detail.textContent=[d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ');const status=document.createElement('p');status.className='hint';status.textContent=d.is_active?'نشط ويظهر في صفحة الحجز':(d.self_registered?'طلب انضمام جديد — بانتظار مراجعة الإدارة':'غير مفعّل ولا يظهر في صفحة الحجز');
- const toggle=document.createElement('button');toggle.className='sm '+(d.is_active?'stop':'go');toggle.textContent=d.is_active?'إيقاف الطبيب':'تفعيل الطبيب';toggle.onclick=async()=>{toggle.disabled=true;const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:!d.is_active});if(error){toast('تعذر تغيير الحالة: '+error.message);toggle.disabled=false;return;}toast('تم تحديث حالة الطبيب.');loadAdminDoctors();};card.append(title,detail,status,toggle);box.appendChild(card);});
+ if(!d.is_active){const approve=document.createElement('button');approve.className='sm go';approve.textContent='الموافقة على الطبيب';approve.onclick=async()=>{approve.disabled=true;const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:true});if(error){toast('تعذر اعتماد الطبيب: '+error.message);approve.disabled=false;return;}toast('تم اعتماد الطبيب.');loadAdminDoctors();};card.append(approve);}else{const approved=document.createElement('span');approved.className='chip on';approved.textContent='تمت الموافقة';card.append(approved);}box.append(title,detail,status, ...Array.from(card.children).slice(2));box.appendChild(card);});
 }
 $('saveDoctorHoursBtn').onclick=async()=>{
  const msg=$('doctorHoursMsg');msg.textContent='';const doctorId=$('doctorPick').value,start=$('doctorStart').value,end=$('doctorEnd').value,slot=Number($('doctorSlot').value);
