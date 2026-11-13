@@ -28,13 +28,13 @@ button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px
 <label for="notes">ملاحظات (اختياري)</label><textarea id="notes" maxlength="1000" placeholder="اكتب أي معلومة تساعد الطبيب"></textarea>
 <button id="bookBtn" class="primary" disabled>تأكيد الحجز</button>
 </section>
-<section class="panel"><h2>حجوزاتي</h2><div id="myBookings" class="muted">جاري تحميل الحجوزات...</div></section>
+<section class="panel"><h2>حجوزاتي</h2><div id="myBookings" class="muted">جاري تحميل الحجوزات...</div></section>\n<section class="panel" id="doctorBookingsPanel" hidden><h2>مواعيد عيادتي</h2><div id="doctorBookings" class="muted">جاري تحميل مواعيد العيادة...</div></section>
 </main><div id="msg" hidden role="status"></div>
 <script>
 (function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
 async function init(){
 const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co','sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT');
-const $=id=>document.getElementById(id);let user=null,doctors=[],selected=null,selectedSlot=null,availability=[];
+const $=id=>document.getElementById(id);let user=null,doctors=[],selected=null,selectedSlot=null,availability=[],myDoctor=null;
 function msg(t){$('msg').textContent=t;$('msg').hidden=false;clearTimeout(msg.t);msg.t=setTimeout(()=>$('msg').hidden=true,4000)}
 const {data:{user:u},error:authError}=await sb.auth.getUser();user=u;
 if(authError||!user){location.replace('./index.html');return}
@@ -80,15 +80,49 @@ $('bookBtn').textContent='تأكيد الحجز';
 if(error){msg(error.message.includes('already booked')?'الموعد اتحجز بالفعل، اختار موعدًا آخر.':'تعذر الحجز: '+error.message);$('bookBtn').disabled=false;return}
 msg('تم إرسال طلب الحجز بنجاح.');selectedSlot=null;$('bookBtn').disabled=true;await renderBookings();await renderSlots()
 };
+async function loadDoctorBookings(){
+const {data:doctor,error:doctorError}=await sb.from('doctor_profiles').select('id,display_name,is_active').eq('user_id',user.id).maybeSingle();
+if(doctorError){$('doctorBookingsPanel').hidden=true;return}
+myDoctor=doctor;
+if(!myDoctor){$('doctorBookingsPanel').hidden=true;return}
+$('doctorBookingsPanel').hidden=false;
+if(!myDoctor.is_active){$('doctorBookings').innerHTML='<div class="empty">ملف العيادة تحت المراجعة أو غير مفعّل؛ ستظهر الحجوزات هنا بعد الاعتماد.</div>';return}
+const {data,error}=await sb.from('doctor_appointments').select('id,appointment_at,status,patient_name,patient_phone,notes').eq('doctor_id',myDoctor.id).order('appointment_at',{ascending:true}).limit(50);
+const box=$('doctorBookings');box.innerHTML='';
+if(error){box.textContent='تعذر تحميل مواعيد العيادة: '+error.message;return}
+if(!data||!data.length){box.innerHTML='<div class="empty">لا توجد حجوزات للعيادة حتى الآن.</div>';return}
+const labels={pending:'في انتظار رد العيادة',confirmed:'تم التأكيد',rejected:'مرفوض',cancelled:'ملغي',completed:'مكتمل'};
+data.forEach(a=>{
+const row=document.createElement('div');row.className='booking';
+const date=new Date(a.appointment_at);
+row.innerHTML='<b>'+esc(a.patient_name)+'</b><div class="muted">'+date.toLocaleDateString('ar-EG')+' — '+date.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})+'</div><div class="muted">موبايل: '+esc(a.patient_phone)+'</div>'+(a.notes?'<div class="muted">ملاحظات: '+esc(a.notes)+'</div>':'')+'<span class="status">'+(labels[a.status]||esc(a.status))+'</span>';
+if(a.status==='pending' && date>new Date()){
+const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;margin-top:9px';
+const confirm=document.createElement('button');confirm.type='button';confirm.className='primary';confirm.style.cssText='margin:0;background:#16803c';confirm.textContent='تأكيد الحجز';
+const reject=document.createElement('button');reject.type='button';reject.className='primary';reject.style.cssText='margin:0;background:#b42318';reject.textContent='رفض';
+confirm.onclick=()=>respond(a.id,'confirm',confirm,reject);
+reject.onclick=()=>respond(a.id,'reject',confirm,reject);
+actions.append(confirm,reject);row.appendChild(actions);
+}
+box.appendChild(row);
+});
+}
+async function respond(id,action,confirmBtn,rejectBtn){
+confirmBtn.disabled=true;rejectBtn.disabled=true;
+const {error}=await sb.rpc('doctor_respond_to_appointment',{p_appointment_id:id,p_action:action});
+if(error){msg('تعذر تحديث الحجز: '+error.message);confirmBtn.disabled=false;rejectBtn.disabled=false;return}
+msg(action==='confirm'?'تم تأكيد الحجز.':'تم رفض الحجز.');
+await loadDoctorBookings();await renderBookings();
+}
 async function renderBookings(){
 const {data,error}=await sb.from('doctor_appointments').select('id,appointment_at,status,patient_name,doctor_id,doctor_profiles(display_name,specialty)').eq('patient_id',user.id).order('appointment_at',{ascending:false}).limit(30);
 const box=$('myBookings');box.innerHTML='';
 if(error){box.textContent='تعذر تحميل الحجوزات: '+error.message;return}
 if(!data||!data.length){box.innerHTML='<div class="empty">لسه مفيش حجوزات.</div>';return}
 const labels={pending:'في انتظار تأكيد العيادة',confirmed:'تم التأكيد',rejected:'مرفوض',cancelled:'ملغي',completed:'مكتمل'};
-data.forEach(a=>{const d=document.createElement('div');d.className='booking';const date=new Date(a.appointment_at);d.innerHTML='<b>'+esc(a.doctor_profiles?.display_name||'الطبيب')+'</b><div class="muted">'+date.toLocaleDateString('ar-EG')+' — '+date.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})+'</div><span class="status">'+(labels[a.status]||esc(a.status))+'</span>';box.appendChild(d)})
+data.forEach(a=>{const d=document.createElement('div');d.className='booking';const date=new Date(a.appointment_at);d.innerHTML='<b>'+esc(a.doctor_profiles?.display_name||'الطبيب')+'</b><div class="muted">'+date.toLocaleDateString('ar-EG')+' — '+date.toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})+'</div><span class="status">'+(labels[a.status]||esc(a.status))+'</span>';if(['pending','confirmed'].includes(a.status)&&date>new Date()){const b=document.createElement('button');b.type='button';b.textContent='إلغاء الحجز';b.style.cssText='display:block;margin-top:8px;background:#fff1f0;color:#b42318';b.onclick=async()=>{if(!confirm('هل تريد إلغاء هذا الحجز؟'))return;b.disabled=true;const {error}=await sb.rpc('patient_cancel_doctor_appointment',{p_appointment_id:a.id});if(error){msg('تعذر إلغاء الحجز: '+error.message);b.disabled=false;return}msg('تم إلغاء الحجز.');await renderBookings();await renderSlots();await loadDoctorBookings()};d.appendChild(b)}box.appendChild(d)})
 }
-await loadDoctors();await renderBookings();
+await loadDoctors();await renderBookings();await loadDoctorBookings();
 }
 </script>
 </body></html>
