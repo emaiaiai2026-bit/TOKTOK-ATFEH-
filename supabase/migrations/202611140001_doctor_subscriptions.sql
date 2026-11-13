@@ -275,3 +275,27 @@ grant execute on function public.admin_update_doctor_subscription_settings(boole
 grant execute on function public.admin_list_doctor_subscriptions() to authenticated;
 grant execute on function public.admin_record_doctor_subscription_payment(uuid,numeric,integer,text,text) to authenticated;
 grant execute on function public.admin_set_doctor_subscription_status(uuid,text,timestamptz,text) to authenticated;
+
+create or replace function public.admin_list_doctor_subscription_payments(p_doctor_id uuid)
+returns table(
+  payment_id uuid, amount numeric, currency text, months integer,
+  method text, reference_note text, period_start timestamptz,
+  period_end timestamptz, paid_at timestamptz
+)
+language plpgsql stable security definer
+set search_path=public,pg_temp
+as $
+begin
+  if not public.is_admin() then raise exception 'admins only' using errcode='42501'; end if;
+  return query
+  select p.id,p.amount,p.currency,p.months,p.method,p.reference_note,
+         p.period_start,p.period_end,p.paid_at
+  from public.doctor_subscription_payments p
+  where p.doctor_id=p_doctor_id
+  order by p.paid_at desc;
+end;
+$;
+
+revoke all on function public.admin_list_doctor_subscription_payments(uuid) from public,anon;
+grant execute on function public.admin_list_doctor_subscription_payments(uuid) to authenticated;
+
