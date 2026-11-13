@@ -2,12 +2,6 @@
 <html lang="ar" dir="rtl">
 <head>
 <script>
-(function () {
-  var host = location.hostname;
-  if (host.endsWith('.toktok-atfeh-preview.pages.dev') && host !== 'toktok-atfeh-preview.pages.dev') {
-    location.replace('https://toktok-atfeh-preview.pages.dev' + location.pathname + location.search + location.hash);
-  }
-})();
 window.__loadExternalScripts = function (groups) {
   return groups.reduce(function (chain, candidates) {
     return chain.then(function () {
