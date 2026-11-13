@@ -55,7 +55,7 @@ selected=d;selectedSlot=null;$('bookingPanel').hidden=false;$('doctorTitle').tex
 $('bookBtn').disabled=true;await loadDoctors();await loadAvailability();
 }
 async function loadAvailability(){
-const {data,error}=await sb.from('doctor_availability').select('weekday,start_time,end_time,slot_minutes').eq('doctor_id',selected.id).eq('is_active',true).order('weekday');
+const {data,error}=await sb.from('doctor_work_shifts').select('weekday,start_time,end_time,slot_minutes').eq('doctor_id',selected.id).eq('is_active',true).order('weekday').order('start_time');
 if(error){$('slots').textContent='تعذر تحميل المواعيد: '+error.message;return}availability=data||[];renderSlots()
 }
 function renderSlots(){
