@@ -61,8 +61,9 @@ $('name').value=profile?.name||'';
 $('phone').value=profile?.phone||'';
 $('patientChoice').onclick=()=>location.href='./doctors.html';
 $('doctorChoice').onclick=async()=>{
-$('doctorPanel').hidden=false;$('doctorPanel').scrollIntoView({behavior:'smooth'});
 const {data:d}=await sb.from('doctor_profiles').select('display_name,specialty,clinic_name,address,phone,bio,is_active,self_registered').eq('user_id',user.id).maybeSingle();
+if(d&&d.is_active){location.href='./doctor-clinic.html';return;}
+$('doctorPanel').hidden=false;$('doctorPanel').scrollIntoView({behavior:'smooth'});
 if(d){
 $('name').value=d.display_name||$('name').value;$('specialty').value=d.specialty||'';
 $('clinic').value=d.clinic_name||'';$('address').value=d.address||'';$('phone').value=d.phone||$('phone').value;$('bio').value=d.bio||'';
