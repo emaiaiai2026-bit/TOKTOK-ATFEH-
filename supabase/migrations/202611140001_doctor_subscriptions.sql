@@ -284,7 +284,7 @@ returns table(
 )
 language plpgsql stable security definer
 set search_path=public,pg_temp
-as $
+as $function$
 begin
   if not public.is_admin() then raise exception 'admins only' using errcode='42501'; end if;
   return query
@@ -294,7 +294,7 @@ begin
   where p.doctor_id=p_doctor_id
   order by p.paid_at desc;
 end;
-$;
+$function$;
 
 revoke all on function public.admin_list_doctor_subscription_payments(uuid) from public,anon;
 grant execute on function public.admin_list_doctor_subscription_payments(uuid) to authenticated;
