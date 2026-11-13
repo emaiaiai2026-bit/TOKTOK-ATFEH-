@@ -131,7 +131,7 @@
 
 <!-- اللوحة -->
 <div id="app" class="hidden">
-  <header><b>خدماتنا • الإدارة</b><div style="display:flex;align-items:center;gap:8px"><button id="logoutBtn">خروج</button></div></header>
+  <header><b>خدماتنا • الإدارة</b><div style="display:flex;align-items:center;gap:8px"><button id="logoutBtn">قفل اللوحة</button></div></header>
   <main>
     <section class="pane" id="paneMap">
       <div id="map"></div>
@@ -343,8 +343,14 @@ $('googleAdminBtn').onclick = async () => {
   }
 };
 $('logoutBtn').onclick = async () => {
-  await sb.auth.signOut();
-  location.replace('./admin-v7.html');
+  // اقفل لوحة الإدارة واطلب PIN مرة أخرى مع الاحتفاظ بجلسة Google.
+  $('app').classList.add('hidden');
+  $('pinScreen').classList.remove('hidden');
+  const allowed = await runAdminPinGate();
+  if (allowed) {
+    $('pinScreen').classList.add('hidden');
+    $('app').classList.remove('hidden');
+  }
 };
 
 /* ربط Google بهوية حساب الإدارة الأصلي دون إنشاء حساب جديد */
