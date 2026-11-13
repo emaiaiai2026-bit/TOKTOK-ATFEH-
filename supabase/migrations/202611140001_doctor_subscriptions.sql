@@ -205,7 +205,7 @@ begin
   if p_amount < v_price*p_months then raise exception 'payment is below the configured subscription price'; end if;
 
   insert into public.doctor_subscriptions(doctor_id,status,starts_at,ends_at)
-  values(p_doctor_id,'active',now(),now())
+  values(p_doctor_id,'active',now(),null)
   on conflict(doctor_id) do nothing;
 
   select * into v_sub from public.doctor_subscriptions
@@ -246,6 +246,7 @@ as $$
 begin
   if not public.is_admin() then raise exception 'admins only' using errcode='42501'; end if;
   if p_status not in ('active','expired','suspended') then raise exception 'invalid subscription status'; end if;
+  if p_status='active' and (p_ends_at is null or p_ends_at<=now()) then raise exception 'active subscription requires a future end date'; end if;
   if not exists(select 1 from public.doctor_profiles where id=p_doctor_id) then raise exception 'doctor not found'; end if;
   insert into public.doctor_subscriptions(doctor_id,status,starts_at,ends_at,admin_note)
   values(p_doctor_id,p_status,case when p_status='active' then now() else null end,p_ends_at,p_admin_note)
