@@ -170,8 +170,8 @@
           <textarea id="doctorOcrText" rows="4" readonly style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px"></textarea>
           <div id="doctorCameraModal" class="hidden" style="position:fixed;inset:0;z-index:5000;background:#07152b;display:flex;flex-direction:column;padding:16px;gap:12px;color:white">
             <b style="font-size:18px">وجّه الكارت أو النص داخل المستطيل</b>
-            <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;aspect-ratio:4/3;margin:auto;overflow:hidden;background:#000;border-radius:14px">
-              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain"></video>
+            <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;max-height:calc(100dvh - 250px);aspect-ratio:4/3;margin:auto;overflow:hidden;background:#000;border-radius:14px">
+              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
               <div style="position:absolute;left:6%;top:19%;width:88%;height:62%;border:3px solid #ffd54a;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.42),inset 0 0 0 1px rgba(255,255,255,.55);pointer-events:none"></div>
             </div>
             <p style="margin:0;text-align:center;font-size:13px">قرّب الكارت حتى تظهر الكتابة واضحة داخل الإطار الأصفر.</p>
@@ -347,6 +347,17 @@ $('openDoctorCameraBtn').onclick=async()=>{
     video.srcObject=doctorCameraStream;
     $('doctorCameraModal').classList.remove('hidden');
     await video.play();
+    // Match the preview viewport to the actual camera stream ratio so no black side bars remain.
+    const stage=$('doctorCameraStage');
+    const fitStage=()=>{
+      if(!video.videoWidth||!video.videoHeight)return;
+      const ratio=video.videoWidth/video.videoHeight;
+      stage.style.aspectRatio=video.videoWidth+' / '+video.videoHeight;
+      stage.style.width='min(100%, calc((100dvh - 250px) * '+ratio+'))';
+      stage.style.maxHeight='calc(100dvh - 250px)';
+    };
+    fitStage();
+    video.addEventListener('loadedmetadata',fitStage,{once:true});
     const settings=track.getSettings?.()||{};
     status.textContent='الكاميرا جاهزة. ضع الكارت داخل الإطار الأصفر. '+(settings.width&&settings.height?('دقة المعاينة '+settings.width+'×'+settings.height+'.'):'');
   }catch(e){
