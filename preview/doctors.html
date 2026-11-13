@@ -28,7 +28,8 @@ button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px
 <label for="notes">ملاحظات (اختياري)</label><textarea id="notes" maxlength="1000" placeholder="اكتب أي معلومة تساعد الطبيب"></textarea>
 <button id="bookBtn" class="primary" disabled>تأكيد الحجز</button>
 </section>
-<section class="panel"><h2>حجوزاتي</h2><div id="myBookings" class="muted">جاري تحميل الحجوزات...</div></section>\n<section class="panel" id="doctorBookingsPanel" hidden><h2>مواعيد عيادتي</h2><div id="doctorBookings" class="muted">جاري تحميل مواعيد العيادة...</div></section>
+<section class="panel"><h2>حجوزاتي</h2><div id="myBookings" class="muted">جاري تحميل الحجوزات...</div></section>
+<section class="panel" id="doctorBookingsPanel" hidden><h2>مواعيد عيادتي</h2><div id="doctorBookings" class="muted">جاري تحميل مواعيد العيادة...</div></section>
 </main><div id="msg" hidden role="status"></div>
 <script>
 (function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
