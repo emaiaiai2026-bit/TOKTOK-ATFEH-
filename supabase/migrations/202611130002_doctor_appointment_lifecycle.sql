@@ -41,7 +41,7 @@ begin
     raise exception 'not authenticated' using errcode = '42501';
   end if;
 
-  if p_action not in ('confirm', 'reject') then
+  if p_action is null or p_action not in ('confirm', 'reject') then
     raise exception 'invalid appointment action';
   end if;
 
