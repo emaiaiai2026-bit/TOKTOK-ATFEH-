@@ -160,54 +160,8 @@
     </section>
 
     <section class="pane hidden" id="paneDoctors">
-      <h2>مراجعة طلبات الأطباء</h2>
-      <div class="card">
-        <h3 style="margin:0 0 8px">إضافة طبيب من حساب موجود</h3>
-        <div style="border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:#F8FAFF">
-          <b>📷 تصوير كارت الطبيب أو الروشتة</b>
-          <p class="hint" style="margin:6px 0 10px">ستظهر معاينة الكاميرا مباشرة داخل الصفحة. ضع بيانات الطبيب داخل الإطار الأصفر ثم التقط صورة أصلية عالية الدقة؛ الإطار دليل للتوجيه ولا نقصّ الصورة بعد التصوير.</p>
-          <button id="openDoctorCameraBtn" class="sm pay" type="button" style="width:100%">فتح الكاميرا داخل الصفحة</button>
-          <button id="chooseDoctorPhotoBtn" class="sm" type="button" style="width:100%;margin-top:7px;background:#eef2ff;color:var(--navy)">اختيار صورة محفوظة بدل التصوير</button>
-          <input id="doctorCardPhoto" type="file" accept="image/*" hidden>
-          <img id="doctorCardPreview" alt="معاينة صورة بيانات الطبيب" class="hidden" style="display:block;max-width:100%;max-height:240px;object-fit:contain;margin:8px auto;border-radius:10px">
-          <button id="readDoctorCardBtn" class="sm pay" type="button" style="width:100%;margin-top:6px" disabled>قراءة البيانات من الصورة</button>
-          <p id="doctorOcrStatus" class="hint" role="status" style="margin:8px 0 0">الصورة تُعالج على الموبايل، ولن تُحفظ في قاعدة البيانات.</p>
-          <label for="doctorOcrText" style="margin-top:10px">النص المستخرج للمراجعة</label>
-          <textarea id="doctorOcrText" rows="4" readonly style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px"></textarea>
-          <div id="doctorCameraModal" class="hidden" style="position:fixed;inset:0;z-index:5000;background:#07152b;display:flex;flex-direction:column;padding:16px;gap:12px;color:white">
-            <b style="font-size:18px">وجّه الكارت أو النص داخل المستطيل</b>
-            <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;height:min(42dvh,360px);max-height:360px;flex:0 1 auto;aspect-ratio:auto;margin:auto;overflow:hidden;background:#000;border-radius:14px">
-              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain"></video>
-              <canvas id="doctorScanOverlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
-            </div>
-            <p id="doctorScanHint" style="margin:0;text-align:center;font-size:13px">وجّه الكارت بالكامل للكاميرا وثبّت الموبايل؛ سيتم التقاطه تلقائيًا عند اكتشاف حدوده.</p>
-            <div style="display:flex;gap:10px">
-              <button id="captureDoctorPhotoBtn" class="btn" type="button" style="display:block;flex:1">التقاط الصورة</button>
-              <button id="closeDoctorCameraBtn" class="sm" type="button" style="background:#fff;color:#123">إغلاق</button>
-            </div>
-          </div>
-        </div>
-        <label for="doctorUserSearch">ابحث بالاسم أو رقم الموبايل</label><input id="doctorUserSearch" placeholder="اكتب جزءًا من الاسم أو الرقم">
-        <div id="doctorUserResults" class="meta">اكتب للبحث عن حساب مسجل بالتطبيق.</div>
-        <p id="doctorSelected" class="hint">لم يتم اختيار حساب بعد.</p>
-        <label for="doctorName">اسم الطبيب الظاهر</label><input id="doctorName" placeholder="اسم الطبيب">
-        <label for="doctorSpecialty">التخصص</label><input id="doctorSpecialty" placeholder="مثال: أطفال، باطنة، أسنان">
-        <label for="doctorClinic">اسم العيادة</label><input id="doctorClinic" placeholder="اسم العيادة (اختياري)">
-        <label for="doctorAddress">العنوان</label><input id="doctorAddress" placeholder="عنوان العيادة">
-        <label for="doctorPhone">رقم الهاتف</label><input id="doctorPhone" inputmode="tel" placeholder="01xxxxxxxxx">
-        <label for="doctorBio">نبذة مختصرة</label><input id="doctorBio" placeholder="اختياري">
-        <button id="saveDoctorBtn" class="btn" type="button">حفظ الطبيب وتفعيله</button><p id="doctorFormMsg" class="msg" role="status"></p>
-      </div>
-      <div class="card">
-        <h3 style="margin:0 0 8px">إضافة مواعيد العمل</h3>
-        <label for="doctorPick">اختر الطبيب</label><select id="doctorPick" style="width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;margin-bottom:10px;font:inherit"></select>
-        <label for="doctorWeekday">اليوم</label><select id="doctorWeekday" style="width:100%;height:48px;border:1px solid var(--line);border-radius:12px;padding:0 10px;margin-bottom:10px;font:inherit">
-          <option value="0">الأحد</option><option value="1">الإثنين</option><option value="2">الثلاثاء</option><option value="3">الأربعاء</option><option value="4">الخميس</option><option value="5">الجمعة</option><option value="6">السبت</option></select>
-        <label for="doctorStart">من الساعة</label><input id="doctorStart" type="time" value="17:00">
-        <label for="doctorEnd">إلى الساعة</label><input id="doctorEnd" type="time" value="21:00">
-        <label for="doctorSlot">مدة الكشف بالدقائق</label><input id="doctorSlot" type="number" min="10" max="180" step="5" value="30">
-        <button id="saveDoctorHoursBtn" class="btn" type="button">حفظ مواعيد اليوم</button><p id="doctorHoursMsg" class="msg" role="status"></p>
-      </div>
+      <h2>اعتماد الأطباء والاشتراكات</h2>
+      <p class="hint">مراجعة طلبات الانضمام واعتماد الطبيب فقط. إدارة العيادة والمواعيد من داخل الخدمة الطبية.</p>
       <div id="adminDoctorList"></div>
     </section>
     <section class="pane hidden" id="paneSettings">
@@ -278,39 +232,6 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-// ماسح مستندات تلقائي: اكتشاف حدود الكارت، انتظار الثبات، ثم تصحيح المنظور والتقاطه.
-let doctorCardObjectUrl=null,tesseractLoadPromise=null,doctorCardFile=null,doctorCameraStream=null;
-let doctorCvReady=null,doctorScanTimer=null,doctorStableFrames=0,doctorLastCorners=null,doctorCaptureBusy=false;
-const doctorPhotoInput=$('doctorCardPhoto'),DOCTOR_PHOTO_DB='toktok-doctor-photo-v1';
-function openDoctorPhotoDb(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window)){reject(new Error('التخزين المؤقت غير مدعوم.'));return;}const req=indexedDB.open(DOCTOR_PHOTO_DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('photos'))req.result.createObjectStore('photos');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('تعذر فتح التخزين المؤقت.'));});}
-async function saveDoctorPhotoLocally(file){const db=await openDoctorPhotoDb();try{await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put({blob:file,type:file.type||'image/jpeg',name:file.name||'doctor-card.jpg',savedAt:Date.now()},'current');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}finally{db.close();}}
-async function restoreDoctorPhotoLocally(){try{const db=await openDoctorPhotoDb();const saved=await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get('current');req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});db.close();if(!saved?.blob||Date.now()-saved.savedAt>86400000)return;setDoctorPhoto(new File([saved.blob],saved.name||'doctor-card.jpg',{type:saved.type||'image/jpeg'}));$('doctorOcrStatus').textContent='استعدنا الصورة السابقة من الجهاز. يمكنك مراجعتها أو قراءتها.';}catch(e){console.warn('Photo restore:',e);}}
-async function clearDoctorPhotoLocally(){try{const db=await openDoctorPhotoDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete('current');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch(e){console.warn(e);}}
-function setDoctorPhoto(file){doctorCardFile=file;if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);doctorCardObjectUrl=URL.createObjectURL(file);const p=$('doctorCardPreview');p.onload=()=>{p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'center'});};p.onerror=()=>{$('doctorOcrStatus').textContent='تم الالتقاط لكن تعذر عرض الصورة؛ أعد المحاولة.';};p.src=doctorCardObjectUrl;p.classList.remove('hidden');p.style.cssText='display:block;width:100%;max-width:100%;max-height:360px;object-fit:contain;margin:8px auto;border-radius:10px;background:#eef2f7';$('readDoctorCardBtn').disabled=false;$('doctorOcrText').value='';}
-function stopDoctorCamera(){if(doctorScanTimer){clearInterval(doctorScanTimer);doctorScanTimer=null;}if(doctorCameraStream){doctorCameraStream.getTracks().forEach(t=>t.stop());doctorCameraStream=null;}$('doctorCameraVideo').pause();$('doctorCameraVideo').srcObject=null;$('doctorCameraModal').classList.add('hidden');doctorStableFrames=0;doctorLastCorners=null;doctorCaptureBusy=false;}
-function loadDoctorCv(){if(window.cv?.Mat)return Promise.resolve(window.cv);if(doctorCvReady)return doctorCvReady;doctorCvReady=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://docs.opencv.org/4.x/opencv.js';s.async=true;s.onload=()=>{const started=Date.now();const poll=()=>{if(window.cv?.Mat){window.cv.onRuntimeInitialized=()=>resolve(window.cv);if(window.cv.Mat)resolve(window.cv);}else if(Date.now()-started>45000)reject(new Error('محرك اكتشاف حدود الكارت لم يكتمل تحميله.'));else setTimeout(poll,150);};poll();};s.onerror=()=>reject(new Error('تعذر تحميل ماسح المستندات.'));document.head.appendChild(s);});return doctorCvReady;}
-function orderDoctorCorners(points){const sum=points.map(p=>p.x+p.y),diff=points.map(p=>p.y-p.x);return [points[sum.indexOf(Math.min(...sum))],points[diff.indexOf(Math.min(...diff))],points[sum.indexOf(Math.max(...sum))],points[diff.indexOf(Math.max(...diff))]];}
-function detectDoctorCard(cv,video){const scale=Math.min(1,480/video.videoWidth),w=Math.max(1,Math.round(video.videoWidth*scale)),h=Math.max(1,Math.round(video.videoHeight*scale));const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d',{willReadFrequently:true}).drawImage(video,0,0,w,h);const src=cv.imread(canvas),gray=new cv.Mat(),blur=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();let best=null,bestArea=0;try{cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,edges,65,170);cv.findContours(edges,contours,hierarchy,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_SIMPLE);const count=Math.min(contours.size(),35);for(let i=0;i<count;i++){const cnt=contours.get(i),peri=cv.arcLength(cnt,true),approx=new cv.Mat();cv.approxPolyDP(cnt,approx,.025*peri,true);const area=Math.abs(cv.contourArea(approx));if(approx.rows===4&&area>bestArea&&area>w*h*.12&&cv.isContourConvex(approx)){const pts=[];for(let j=0;j<4;j++)pts.push({x:approx.intAt(j,0),y:approx.intAt(j,1)});best=orderDoctorCorners(pts);bestArea=area;}approx.delete();cnt.delete();}}finally{src.delete();gray.delete();blur.delete();edges.delete();contours.delete();hierarchy.delete();}return best?{points:best.map(p=>({x:p.x/scale,y:p.y/scale})),score:bestArea/(w*h)}:null;}
-function doctorCornersStable(points){if(!doctorLastCorners){doctorLastCorners=points;doctorStableFrames=0;return false;}const delta=points.reduce((n,p,i)=>n+Math.hypot(p.x-doctorLastCorners[i].x,p.y-doctorLastCorners[i].y),0)/4;doctorLastCorners=points;if(delta<5)doctorStableFrames++;else doctorStableFrames=0;return doctorStableFrames>=9;}
-function drawDoctorScanOverlay(points,video){const canvas=$('doctorScanOverlay'),rect=video.getBoundingClientRect(),stage=$('doctorCameraStage').getBoundingClientRect();canvas.width=Math.round(stage.width*devicePixelRatio);canvas.height=Math.round(stage.height*devicePixelRatio);const ctx=canvas.getContext('2d');ctx.scale(devicePixelRatio,devicePixelRatio);ctx.clearRect(0,0,stage.width,stage.height);if(!points)return;const vw=video.videoWidth,vh=video.videoHeight,scale=Math.min(rect.width/vw,rect.height/vh),ox=(rect.width-vw*scale)/2,oy=(rect.height-vh*scale)/2;ctx.beginPath();points.forEach((p,i)=>{const x=ox+p.x*scale,y=oy+p.y*scale;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.strokeStyle='#37e58a';ctx.lineWidth=4;ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.stroke();}
-async function captureDoctorCardFromCorners(points){if(doctorCaptureBusy)return;doctorCaptureBusy=true;$('doctorScanHint').textContent='تم اكتشاف الكارت؛ جارٍ تثبيت الصورة وتصحيح الميل...';const cv=await loadDoctorCv(),video=$('doctorCameraVideo'),frame=document.createElement('canvas');frame.width=video.videoWidth;frame.height=video.videoHeight;frame.getContext('2d').drawImage(video,0,0);const src=cv.imread(frame),srcPts=cv.matFromArray(4,1,cv.CV_32FC2,points.flatMap(p=>[p.x,p.y]));const [tl,tr,br,bl]=points;const width=Math.min(2400,Math.round(Math.max(Math.hypot(br.x-bl.x,br.y-bl.y),Math.hypot(tr.x-tl.x,tr.y-tl.y)))),height=Math.min(3200,Math.round(Math.max(Math.hypot(tr.x-br.x,tr.y-br.y),Math.hypot(tl.x-bl.x,tl.y-bl.y))));const dstPts=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,width-1,0,width-1,height-1,0,height-1]),M=cv.getPerspectiveTransform(srcPts,dstPts),dst=new cv.Mat();cv.warpPerspective(src,dst,M,new cv.Size(width,height),cv.INTER_CUBIC,cv.BORDER_REPLICATE);const out=document.createElement('canvas');cv.imshow(out,dst);const blob=await new Promise(resolve=>out.toBlob(resolve,'image/jpeg',.96));src.delete();srcPts.delete();dstPts.delete();M.delete();dst.delete();if(!blob)throw new Error('تعذر تجهيز صورة الكارت.');setDoctorPhoto(new File([blob],'doctor-card-scan.jpg',{type:'image/jpeg',lastModified:Date.now()}));stopDoctorCamera();$('doctorOcrStatus').textContent='تم مسح الكارت تلقائيًا وتصحيح الميل وإظهار الصورة للمراجعة. جارٍ حفظها مؤقتًا...';saveDoctorPhotoLocally(doctorCardFile).then(()=>$('doctorOcrStatus').textContent='الصورة الممسوحة جاهزة. راجعها ثم اضغط «قراءة البيانات من الصورة».').catch(()=>$('doctorOcrStatus').textContent='الصورة الممسوحة جاهزة للقراءة، لكن تعذر حفظ نسخة احتياطية.');}
-async function startDoctorAutoScan(){
-  // لا نشغّل OpenCV على واجهة الهاتف؛ المعالجة المتزامنة كانت قد تجمّد اللمس.
-  // نترك الكاميرا مستقرة ونستخدم التقاطًا يدويًا موثوقًا، ثم OCR بعد التصوير.
-  $('doctorScanHint').textContent='الكاميرا جاهزة. ضع الكارت كاملًا داخل الصورة واضغط «التقاط الصورة».';
-}
-$('openDoctorCameraBtn').onclick=async()=>{const status=$('doctorOcrStatus');if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){status.textContent='افتح الصفحة في Chrome عبر HTTPS للسماح بالكاميرا.';return;}try{status.textContent='جارٍ فتح الكاميرا الخلفية...';doctorCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}}});const video=$('doctorCameraVideo');video.srcObject=doctorCameraStream;video.muted=true;video.setAttribute('playsinline','');$('doctorCameraModal').classList.remove('hidden');await video.play();const stage=$('doctorCameraStage');stage.style.width='100%';stage.style.height='min(42dvh,360px)';stage.style.aspectRatio='auto';startDoctorAutoScan();}catch(e){console.error(e);stopDoctorCamera();status.textContent='تعذر فتح الكاميرا: '+(e.message||e.name||'خطأ غير معروف');}};
-$('closeDoctorCameraBtn').onclick=()=>{stopDoctorCamera();$('doctorOcrStatus').textContent='تم إغلاق الكاميرا.';};
-$('captureDoctorPhotoBtn').onclick=async()=>{const video=$('doctorCameraVideo'),btn=$('captureDoctorPhotoBtn');if(!doctorCameraStream||!video.videoWidth){$('doctorOcrStatus').textContent='الكاميرا لم تجهز بعد. انتظر ظهور الصورة ثم حاول.';return;}btn.disabled=true;$('doctorOcrStatus').textContent='جارٍ التقاط الصورة...';try{const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;const ctx=canvas.getContext('2d');if(!ctx)throw new Error('تعذر تجهيز الصورة على هذا المتصفح.');ctx.drawImage(video,0,0,canvas.width,canvas.height);const blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(new Error('تعذر إنشاء ملف الصورة.')),'image/jpeg',.94));const file=new File([blob],'doctor-card-manual.jpg',{type:'image/jpeg',lastModified:Date.now()});setDoctorPhoto(file);stopDoctorCamera();$('doctorOcrStatus').textContent='تم التقاط الصورة. جارٍ حفظ نسخة مؤقتة على الجهاز...';try{await saveDoctorPhotoLocally(file);$('doctorOcrStatus').textContent='الصورة جاهزة. اضغط «قراءة البيانات من الصورة» لاختبار OCR.';}catch(_){$('doctorOcrStatus').textContent='الصورة جاهزة للقراءة، لكن تعذر حفظ النسخة المؤقتة.';}}catch(e){$('doctorOcrStatus').textContent='فشل التصوير: '+(e.message||'خطأ غير معروف');}finally{btn.disabled=false;}};
-$('chooseDoctorPhotoBtn').onclick=()=>doctorPhotoInput.click();
-doctorPhotoInput.addEventListener('change',()=>{const file=doctorPhotoInput.files?.[0];$('doctorOcrText').value='';if(!file){$('doctorCardPreview').classList.add('hidden');$('readDoctorCardBtn').disabled=true;return;}if(!file.type.startsWith('image/')){$('doctorOcrStatus').textContent='اختار صورة JPG أو PNG.';return;}if(file.size>15*1024*1024){$('doctorOcrStatus').textContent='اختار صورة أقل من 15 ميجابايت.';doctorPhotoInput.value='';return;}setDoctorPhoto(file);$('doctorOcrStatus').textContent='الصورة جاهزة. جارٍ حفظ نسخة مؤقتة...';saveDoctorPhotoLocally(file).then(()=>$('doctorOcrStatus').textContent='الصورة جاهزة للقراءة.');});
-window.addEventListener('pagehide',stopDoctorCamera);restoreDoctorPhotoLocally();
-function withDoctorOcrTimeout(promise,ms,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);})]).finally(()=>clearTimeout(timer));}
-async function loadDoctorOcr(){if(window.Tesseract)return window.Tesseract;if(!tesseractLoadPromise)tesseractLoadPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('أداة قراءة الصور لم تبدأ.'));s.onerror=()=>{tesseractLoadPromise=null;reject(new Error('تعذر تحميل أداة القراءة.'));};document.head.appendChild(s);});return withDoctorOcrTimeout(tesseractLoadPromise,35000,'تحميل أداة القراءة استغرق وقتًا طويلًا.');}
-function fillDoctorField(id,value){if(value&&!$(id).value.trim())$(id).value=value.trim();}
-function applyDoctorOcrText(raw){const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const labeled=patterns=>{for(const line of lines)for(const pattern of patterns){const m=line.match(pattern);if(m?.[1])return m[1].replace(/[|•]+$/,'').trim();}return '';};const name=labeled([/(?:اسم\s*الطبيب|دكتور|الدكتور|doctor\s*name|dr\.?)[:：\-\s]+(.+)/i]);const specialty=labeled([/(?:التخصص|التخصصات|speciality|specialty)[:：\-\s]+(.+)/i]);const clinic=labeled([/(?:اسم\s*العيادة|العيادة|clinic)[:：\-\s]+(.+)/i]);const address=labeled([/(?:العنوان|عنوان\s*العيادة|address)[:：\-\s]+(.+)/i]);const phoneMatch=raw.match(/(?:\+?20\s*)?0?1[0125][\s\-()]*\d[\d\s\-()]{6,12}/);if(name)fillDoctorField('doctorName',name);if(specialty)fillDoctorField('doctorSpecialty',specialty);if(clinic)fillDoctorField('doctorClinic',clinic);if(address)fillDoctorField('doctorAddress',address);if(phoneMatch){const phone=normalizePhone(phoneMatch[0]);if(phone)fillDoctorField('doctorPhone',phone);}return {name:!!name,specialty:!!specialty,clinic:!!clinic,address:!!address,phone:!!phoneMatch};}
-async function prepareDoctorOcrImage(file){const bitmap=await createImageBitmap(file),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});const scale=Math.min(2,2600/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const image=ctx.getImageData(0,0,canvas.width,canvas.height),d=image.data;for(let i=0;i<d.length;i+=4){const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];const enhanced=Math.max(0,Math.min(255,(y-128)*1.35+128));d[i]=d[i+1]=d[i+2]=enhanced;}ctx.putImageData(image,0,0);return await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
-$('readDoctorCardBtn').onclick=async()=>{const file=doctorCardFile,btn=$('readDoctorCardBtn'),status=$('doctorOcrStatus');if(!file){status.textContent='التقط الكارت أو اختر صورة محفوظة أولًا.';return;}btn.disabled=true;$('doctorOcrText').value='';let worker=null;try{status.textContent='جارٍ تحسين الصورة وتجهيز قارئ العربية والإنجليزية...';const processed=await prepareDoctorOcrImage(file);const T=await loadDoctorOcr();status.textContent='جارٍ تحميل نماذج اللغة العربية والإنجليزية...';worker=await withDoctorOcrTimeout(T.createWorker('ara+eng',1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',langPath:'https://tessdata.projectnaptha.com/4.0.0_fast',logger:m=>{if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة...';else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة النص: '+Math.round(m.progress*100)+'٪';}}),180000,'تحميل محرك القراءة استغرق أكثر من 3 دقائق.');status.textContent='تم تجهيز القارئ. جارٍ قراءة الصورة المحسّنة...';const result=await withDoctorOcrTimeout(worker.recognize(processed,{rotateAuto:true}),120000,'قراءة الصورة استغرقت أكثر من دقيقتين.');const raw=result?.data?.text||'';$('doctorOcrText').value=raw;if(!raw.trim()){status.textContent='لم يظهر نص مقروء. أعد التصوير مع إضاءة جيدة وقرّب الكارت.';return;}const found=applyDoctorOcrText(raw),count=Object.values(found).filter(Boolean).length;status.textContent=count?'تم استخراج '+count+' بيانات محتملة. راجعها وصحّحها قبل الحفظ.':'تم استخراج نص، لكن لم تُكتشف الخانات تلقائيًا. راجع النص يدويًا.';}catch(e){console.error('Doctor OCR:',e);status.textContent='تعذرت القراءة: '+(e.message||'خطأ غير معروف');}finally{if(worker){try{await worker.terminate();}catch(_){}}btn.disabled=false;}};
 /* ---------- دخول الإدارة بالبريد وكلمة المرور ---------- */
 $('emailAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
@@ -567,33 +488,34 @@ $('tabCustomers').onclick = () => showTab('customers');
 $('tabDoctors').onclick = () => showTab('doctors');
 $('tabSettings').onclick = () => showTab('settings');
 
-/* ---------- إدارة الأطباء ---------- */
-let selectedDoctorUser = null, adminDoctorsCache = [], doctorSearchTimer = null;
-$('doctorUserSearch').addEventListener('input',()=>{clearTimeout(doctorSearchTimer);doctorSearchTimer=setTimeout(searchDoctorAccounts,300);});
-async function searchDoctorAccounts(){
- const q=$('doctorUserSearch').value.trim(),box=$('doctorUserResults');box.textContent='';selectedDoctorUser=null;$('doctorSelected').textContent='لم يتم اختيار حساب بعد.';
- if(q.length<2){box.textContent='اكتب حرفين على الأقل للبحث.';return;}
- let query=sb.from('profiles').select('id,name,phone,role').neq('role','admin').limit(20);
- const digits=q.replace(/\D/g,'');query=digits.length>=2?query.ilike('phone','%'+digits+'%'):query.ilike('name','%'+q+'%');
- const {data,error}=await query;if(error){box.textContent='تعذر البحث: '+error.message;return;}
- if(!data?.length){box.textContent='لم يتم العثور على حساب. يجب أن يسجل الطبيب في التطبيق أولًا.';return;}
- data.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='sm pay';b.style='display:block;width:100%;margin:5px 0;text-align:right';b.textContent=(p.name||'بدون اسم')+' • '+(p.phone||'بدون هاتف')+' • '+(p.role||'');b.onclick=()=>{selectedDoctorUser=p;$('doctorSelected').textContent='الحساب المختار: '+(p.name||'بدون اسم')+' — '+(p.phone||'');$('doctorName').value=p.name||'';$('doctorPhone').value=p.phone||'';box.textContent='تم اختيار الحساب.';};box.appendChild(b);});
-}
-$('saveDoctorBtn').onclick=async()=>{
- const msg=$('doctorFormMsg');msg.textContent='';if(!selectedDoctorUser){msg.textContent='اختار حساب الطبيب من نتائج البحث أولًا.';return;}
- const name=$('doctorName').value.trim(),specialty=$('doctorSpecialty').value.trim();if(name.length<2||specialty.length<2){msg.textContent='اكتب اسم الطبيب والتخصص.';return;}
- const rawPhone=$('doctorPhone').value.trim(),phone=rawPhone?normalizePhone(rawPhone):null;if(rawPhone&&!phone){msg.textContent='رقم الهاتف غير صحيح.';return;}
- $('saveDoctorBtn').disabled=true;
- const {data,error}=await sb.rpc('admin_save_doctor',{p_user_id:selectedDoctorUser.id,p_display_name:name,p_specialty:specialty,p_clinic_name:$('doctorClinic').value.trim()||null,p_address:$('doctorAddress').value.trim()||null,p_phone:phone,p_bio:$('doctorBio').value.trim()||null,p_is_active:true});
- $('saveDoctorBtn').disabled=false;if(error){msg.textContent='فشل الحفظ: '+error.message;return;}msg.textContent='تم حفظ الطبيب وتفعيله بنجاح.';await loadAdminDoctors();$('doctorPick').value=data;
-};
+/* ---------- مراجعة واعتماد الأطباء ---------- */
 async function loadAdminDoctors(){
- const box=$('adminDoctorList');if(!box)return;box.textContent='جارٍ تحميل الأطباء...';
- const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,clinic_name,address,phone,bio,is_active,self_registered').order('created_at',{ascending:false});
- if(error){box.textContent='تعذر تحميل الأطباء: '+error.message;return;}adminDoctorsCache=data||[];
- box.textContent='';if(!adminDoctorsCache.length){box.textContent='لم تتم إضافة أطباء حتى الآن.';return;}
- adminDoctorsCache.forEach(d=>{const card=document.createElement('div');card.className='card';const title=document.createElement('b');title.textContent=d.display_name+' — '+d.specialty;const detail=document.createElement('p');detail.className='meta';detail.textContent=[d.clinic_name,d.address,d.phone].filter(Boolean).join(' • ');const status=document.createElement('p');status.className='hint';status.textContent=d.is_active?'نشط ويظهر في صفحة الحجز':(d.self_registered?'طلب انضمام جديد — بانتظار مراجعة الإدارة':'غير مفعّل ولا يظهر في صفحة الحجز');
- card.append(title,detail,status);if(!d.is_active){const approve=document.createElement('button');approve.className='sm go';approve.textContent='الموافقة على الطبيب';approve.onclick=async()=>{approve.disabled=true;const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:true});if(error){toast('تعذر اعتماد الطبيب: '+error.message);approve.disabled=false;return;}toast('تم اعتماد الطبيب.');loadAdminDoctors();};card.append(approve);}else{const approved=document.createElement('span');approved.className='chip on';approved.textContent='تمت الموافقة';card.append(approved);}box.appendChild(card);});
+ const box=$('adminDoctorList');if(!box)return;box.textContent='جارٍ تحميل طلبات الأطباء...';
+ const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,is_active,self_registered').order('created_at',{ascending:false});
+ if(error){box.textContent='تعذر تحميل الأطباء: '+error.message;return;}
+ box.textContent='';
+ if(!data?.length){box.textContent='لا توجد طلبات أطباء حتى الآن.';return;}
+ data.forEach(d=>{
+  const card=document.createElement('div');card.className='card';
+  const title=document.createElement('b');title.textContent=(d.display_name||'طبيب')+' — '+(d.specialty||'بدون تخصص');
+  const status=document.createElement('p');status.className='hint';
+  status.textContent=d.is_active?'تم اعتماد الطبيب':'طلب انضمام بانتظار المراجعة';
+  card.append(title,status);
+  if(!d.is_active){
+   const approve=document.createElement('button');approve.className='sm go';approve.textContent='الموافقة على الطبيب';
+   approve.onclick=async()=>{
+    if(!confirm('تأكيد اعتماد '+(d.display_name||'الطبيب')+'؟'))return;
+    approve.disabled=true;
+    const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:null,p_address:null,p_phone:null,p_bio:null,p_is_active:true});
+    if(error){toast('تعذر اعتماد الطبيب: '+error.message);approve.disabled=false;return;}
+    toast('تم اعتماد الطبيب.');await loadAdminDoctors();
+   };
+   card.append(approve);
+  }else{
+   const badge=document.createElement('span');badge.className='chip on';badge.textContent='تمت الموافقة';card.append(badge);
+  }
+  box.append(card);
+ });
 }
 /* ---------- الخريطة ---------- */
 function initMap(){
