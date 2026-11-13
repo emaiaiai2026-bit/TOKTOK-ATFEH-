@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0B1F4B"><title>الإشعارات | خدماتنا</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F4B;--blue:#1A56DB;--bg:#EAF1FF;--line:#DCE3F0;--muted:#64748b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:Cairo,system-ui,sans-serif}
+header{background:var(--navy);color:#fff;padding:18px}header a{color:#dbeafe;text-decoration:none}h1{font-size:23px;margin:12px 0 4px}header p{margin:0;color:#c6d4f0;font-size:13px}
+main{max-width:720px;margin:14px auto;padding:0 12px}.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.bar span{font-size:13px;color:var(--muted)}
+button{font:inherit;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer}.action{background:var(--blue);color:white}.action:disabled{opacity:.5}
+.item{background:white;border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:10px}.item.unread{border-right:4px solid var(--blue);background:#fafdff}.item h2{font-size:16px;margin:0 0 5px}.item p{font-size:14px;margin:0 0 9px;line-height:1.7}.meta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.empty{background:white;border-radius:15px;padding:24px;text-align:center;color:var(--muted)}#msg{padding:12px;color:#9f1d16;font-size:13px}
+</style></head>
+<body>
+<header><a href="./index.html">← الرجوع للخدمات</a><h1>مركز الإشعارات</h1><p>كل تحديثات حسابك وخدماتك في مكان واحد.</p></header>
+<main><div class="bar"><span id="count">جاري تحميل الإشعارات...</span><button id="readAll" class="action" disabled>تحديد الكل كمقروء</button></div><div id="list"></div><div id="msg" role="status"></div></main>
+<script>
+(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
+async function init(){
+const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co','sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT');
+const $=id=>document.getElementById(id);let rows=[];
+const {data:{user},error:authError}=await sb.auth.getUser();
+if(authError||!user){location.replace('./index.html');return}
+function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function ago(v){const d=Math.max(0,Date.now()-new Date(v).getTime()),m=Math.floor(d/60000);if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' دقيقة';const h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';return new Date(v).toLocaleDateString('ar-EG')}
+async function load(){
+$('msg').textContent='';
+const {data,error}=await sb.from('notifications').select('id,event_type,title,body,target_url,created_at,read_at').eq('user_id',user.id).order('created_at',{ascending:false}).limit(100);
+if(error){$('list').innerHTML='<div class="empty">تعذر تحميل الإشعارات: '+esc(error.message)+'</div>';return}
+rows=data||[];const unread=rows.filter(x=>!x.read_at).length;
+$('count').textContent=rows.length+' إشعار • '+unread+' غير مقروء';
+$('readAll').disabled=!unread;
+if(!rows.length){$('list').innerHTML='<div class="empty">مفيش إشعارات لحد دلوقتي. أي تحديث جديد هيظهر هنا.</div>';return}
+$('list').innerHTML='';
+rows.forEach(n=>{const el=document.createElement('article');el.className='item'+(!n.read_at?' unread':'');el.innerHTML='<h2>'+esc(n.title)+'</h2><p>'+esc(n.body)+'</p><div class="meta"><span>'+ago(n.created_at)+'</span><span>'+(n.read_at?'مقروء':'جديد')+'</span></div>';
+el.addEventListener('click',async()=>{if(!n.read_at){const {error}=await sb.rpc('mark_notification_read',{p_notification_id:n.id});if(error){$('msg').textContent='تعذر تحديث حالة الإشعار: '+error.message;return}n.read_at=new Date().toISOString();}if(n.target_url&&n.target_url!=='./')location.href=n.target_url;else load()});
+$('list').appendChild(el)});
+}
+$('readAll').onclick=async()=>{$('readAll').disabled=true;const {error}=await sb.rpc('mark_all_notifications_read');if(error){$('msg').textContent='تعذر تحديد الإشعارات كمقروءة: '+error.message;$('readAll').disabled=false;return}await load()};
+await load();setInterval(load,30000);
+}
+</script></body></html>
