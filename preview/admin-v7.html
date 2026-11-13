@@ -83,6 +83,9 @@
   .pin::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--navy)}
   .pin.g{background:#B9C2D6}
   #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
+
+  /* Keep the fixed notification bell clear of the admin header's logout button. */
+  #siteNotificationBell{top:calc(76px + env(safe-area-inset-top))!important;left:14px!important}
 </style>
 </head>
 <body>
