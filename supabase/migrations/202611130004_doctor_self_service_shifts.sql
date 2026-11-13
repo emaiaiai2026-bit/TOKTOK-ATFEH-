@@ -17,6 +17,17 @@ create table if not exists public.doctor_work_shifts (
 create index if not exists doctor_work_shifts_lookup
   on public.doctor_work_shifts(doctor_id, weekday, is_active, start_time);
 
+-- Database-level guard: even concurrent requests cannot create overlapping active shifts.
+alter table public.doctor_work_shifts
+  drop constraint if exists doctor_work_shifts_no_overlap;
+alter table public.doctor_work_shifts
+  add constraint doctor_work_shifts_no_overlap
+  exclude using gist (
+    doctor_id with =,
+    weekday with =,
+    tsrange(start_time, end_time, '[)') with &&
+  ) where (is_active);
+
 -- Preserve the already-configured legacy weekly hours as the first shift.
 insert into public.doctor_work_shifts(doctor_id,weekday,start_time,end_time,slot_minutes,is_active)
 select a.doctor_id,a.weekday,a.start_time,a.end_time,a.slot_minutes,a.is_active
