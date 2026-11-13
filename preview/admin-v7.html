@@ -491,7 +491,7 @@ $('tabSettings').onclick = () => showTab('settings');
 /* ---------- مراجعة واعتماد الأطباء ---------- */
 async function loadAdminDoctors(){
  const box=$('adminDoctorList');if(!box)return;box.textContent='جارٍ تحميل طلبات الأطباء...';
- const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,is_active,self_registered').order('created_at',{ascending:false});
+ const {data,error}=await sb.from('doctor_profiles').select('id,user_id,display_name,specialty,clinic_name,address,phone,bio,is_active,self_registered').order('created_at',{ascending:false});
  if(error){box.textContent='تعذر تحميل الأطباء: '+error.message;return;}
  box.textContent='';
  if(!data?.length){box.textContent='لا توجد طلبات أطباء حتى الآن.';return;}
@@ -506,7 +506,7 @@ async function loadAdminDoctors(){
    approve.onclick=async()=>{
     if(!confirm('تأكيد اعتماد '+(d.display_name||'الطبيب')+'؟'))return;
     approve.disabled=true;
-    const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:null,p_address:null,p_phone:null,p_bio:null,p_is_active:true});
+    const {error}=await sb.rpc('admin_save_doctor',{p_user_id:d.user_id,p_display_name:d.display_name,p_specialty:d.specialty,p_clinic_name:d.clinic_name,p_address:d.address,p_phone:d.phone,p_bio:d.bio,p_is_active:true});
     if(error){toast('تعذر اعتماد الطبيب: '+error.message);approve.disabled=false;return;}
     toast('تم اعتماد الطبيب.');await loadAdminDoctors();
    };
