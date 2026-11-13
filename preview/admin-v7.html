@@ -562,7 +562,7 @@ async function loadDoctorSubscriptionAdmin(){
   const title=document.createElement('b');title.textContent=(d.display_name||'طبيب')+' — '+(d.specialty||'بدون تخصص');
   const status=document.createElement('p');status.className='hint';
   const live=d.subscription_status==='active'&&d.ends_at&&new Date(d.ends_at)>new Date();
-  status.textContent=!d.is_approved?'لم تتم الموافقة على الطبيب':(cfg?.promotion_enabled?'متاح مجانًا خلال فترة الترويج':(live?'اشتراك مدفوع ساري حتى '+new Date(d.ends_at).toLocaleDateString('ar-EG'):(d.subscription_status==='suspended'?'الاشتراك موقوف':'لا يوجد اشتراك ساري')));
+  status.textContent=!d.is_approved?'لم تتم الموافقة على الطبيب':(d.subscription_status==='suspended'?'موقوف بواسطة الإدارة':(cfg?.promotion_enabled?'متاح مجانًا خلال فترة الترويج':(live?'اشتراك مدفوع ساري حتى '+new Date(d.ends_at).toLocaleDateString('ar-EG'):'لا يوجد اشتراك ساري')));
   card.append(title,status);
   if(d.is_approved){
    const pay=document.createElement('button');pay.className='sm go';pay.textContent='تسجيل دفعة وتجديد';
