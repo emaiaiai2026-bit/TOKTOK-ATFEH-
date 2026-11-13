@@ -25,7 +25,7 @@ alter table public.doctor_work_shifts
   exclude using gist (
     doctor_id with =,
     weekday with =,
-    tsrange(start_time, end_time, '[)') with &&
+    int4range(extract(epoch from start_time)::integer, extract(epoch from end_time)::integer, '[)') with &&
   ) where (is_active);
 
 -- Preserve the already-configured legacy weekly hours as the first shift.
