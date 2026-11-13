@@ -170,13 +170,13 @@
           <textarea id="doctorOcrText" rows="4" readonly style="width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:13px"></textarea>
           <div id="doctorCameraModal" class="hidden" style="position:fixed;inset:0;z-index:5000;background:#07152b;display:flex;flex-direction:column;padding:16px;gap:12px;color:white">
             <b style="font-size:18px">وجّه الكارت أو النص داخل المستطيل</b>
-            <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;max-height:calc(100dvh - 250px);aspect-ratio:4/3;margin:auto;overflow:hidden;background:#000;border-radius:14px">
-              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
-              <div style="position:absolute;left:6%;top:19%;width:88%;height:62%;border:3px solid #ffd54a;border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.42),inset 0 0 0 1px rgba(255,255,255,.55);pointer-events:none"></div>
+            <div id="doctorCameraStage" style="position:relative;width:100%;max-width:560px;max-height:calc(100dvh - 250px);aspect-ratio:3/4;margin:auto;overflow:hidden;background:#000;border-radius:14px">
+              <video id="doctorCameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:contain"></video>
+              <canvas id="doctorScanOverlay" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>
             </div>
-            <p style="margin:0;text-align:center;font-size:13px">قرّب الكارت حتى تظهر الكتابة واضحة داخل الإطار الأصفر.</p>
+            <p id="doctorScanHint" style="margin:0;text-align:center;font-size:13px">وجّه الكارت بالكامل للكاميرا وثبّت الموبايل؛ سيتم التقاطه تلقائيًا عند اكتشاف حدوده.</p>
             <div style="display:flex;gap:10px">
-              <button id="captureDoctorPhotoBtn" class="btn" type="button">التقاط الصورة</button>
+              <button id="captureDoctorPhotoBtn" class="btn" type="button" style="display:none">التقاط يدوي</button>
               <button id="closeDoctorCameraBtn" class="sm" type="button" style="background:#fff;color:#123">إغلاق</button>
             </div>
           </div>
@@ -272,251 +272,35 @@ function normalizePhone(raw){
   return /^01[0125]\d{8}$/.test(p) ? p : null;
 }
 
-// تصوير داخل الصفحة بإطار مستطيل، مع حفظ الصورة مؤقتًا على الجهاز لاستعادتها بعد إعادة فتح الصفحة.
-let doctorCardObjectUrl = null, tesseractLoadPromise = null, doctorCardFile = null, doctorCameraStream = null;
-const doctorPhotoInput = $('doctorCardPhoto');
-const DOCTOR_PHOTO_DB = 'toktok-doctor-photo-v1';
-function openDoctorPhotoDb(){
-  return new Promise((resolve,reject)=>{
-    if(!('indexedDB' in window)){reject(new Error('التخزين المؤقت غير مدعوم في هذا المتصفح.'));return;}
-    const req=indexedDB.open(DOCTOR_PHOTO_DB,1);
-    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('photos'))req.result.createObjectStore('photos');};
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error('تعذر فتح التخزين المؤقت للصورة.'));
-  });
-}
-async function saveDoctorPhotoLocally(file){
-  const db=await openDoctorPhotoDb();
-  try{await new Promise((resolve,reject)=>{
-    const tx=db.transaction('photos','readwrite');
-    tx.objectStore('photos').put({blob:file,type:file.type||'image/jpeg',name:file.name||'doctor-card.jpg',savedAt:Date.now()},'current');
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error||new Error('تعذر حفظ الصورة مؤقتًا.'));
-  });}finally{db.close();}
-}
-async function restoreDoctorPhotoLocally(){
-  try{
-    const db=await openDoctorPhotoDb();
-    const saved=await new Promise((resolve,reject)=>{
-      const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get('current');
-      req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);
-    });
-    db.close();
-    if(!saved?.blob || Date.now()-saved.savedAt>24*60*60*1000)return;
-    doctorCardFile=new File([saved.blob],saved.name||'doctor-card.jpg',{type:saved.type||'image/jpeg'});
-    if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
-    doctorCardObjectUrl=URL.createObjectURL(doctorCardFile);
-    $('doctorCardPreview').src=doctorCardObjectUrl;
-    $('doctorCardPreview').classList.remove('hidden');
-    $('readDoctorCardBtn').disabled=false;
-    $('doctorOcrStatus').textContent='استعدنا الصورة السابقة من هذا الجهاز. اضغط «قراءة البيانات من الصورة» أو التقط صورة جديدة.';
-  }catch(e){console.warn('Doctor photo restore:',e);}
-}
-async function clearDoctorPhotoLocally(){
-  try{const db=await openDoctorPhotoDb();await new Promise((resolve,reject)=>{
-    const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete('current');
-    tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
-  });db.close();}catch(e){console.warn('Doctor photo cleanup:',e);}
-}
-function stopDoctorCamera(){
-  if(doctorCameraStream){doctorCameraStream.getTracks().forEach(track=>track.stop());doctorCameraStream=null;}
-  $('doctorCameraVideo').srcObject=null;
-  $('doctorCameraModal').classList.add('hidden');
-}
-$('openDoctorCameraBtn').onclick=async()=>{
-  const status=$('doctorOcrStatus');
-  if(!window.isSecureContext){status.textContent='تعذر تشغيل الكاميرا لأن الصفحة ليست في اتصال آمن HTTPS. افتح رابط pages.dev مباشرة.';return;}
-  if(!navigator.mediaDevices?.getUserMedia){status.textContent='المتصفح لا يتيح الكاميرا المباشرة. افتح الصفحة في Chrome أو اختر صورة محفوظة.';return;}
-  try{
-    status.textContent='جارٍ طلب إذن الكاميرا وفتح المعاينة...';
-    const cameraOptions={audio:false,video:{
-      facingMode:{ideal:'environment'},
-      width:{ideal:1920},height:{ideal:1440},aspectRatio:{ideal:4/3}
-    }};
-    try{
-      doctorCameraStream=await navigator.mediaDevices.getUserMedia(cameraOptions);
-    }catch(firstError){
-      console.warn('Preferred rear camera constraints failed; retrying basic video:',firstError);
-      doctorCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'}}});
-    }
-    const track=doctorCameraStream.getVideoTracks()[0];
-    // Request continuous autofocus when the Android camera exposes this capability.
-    try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(focusError){console.info('Continuous autofocus constraint not exposed:',focusError);}
-    const video=$('doctorCameraVideo');
-    video.muted=true;
-    video.setAttribute('playsinline','');
-    video.srcObject=doctorCameraStream;
-    $('doctorCameraModal').classList.remove('hidden');
-    await video.play();
-    // Match the preview viewport to the actual camera stream ratio so no black side bars remain.
-    const stage=$('doctorCameraStage');
-    const fitStage=()=>{
-      if(!video.videoWidth||!video.videoHeight)return;
-      const ratio=video.videoWidth/video.videoHeight;
-      stage.style.aspectRatio=video.videoWidth+' / '+video.videoHeight;
-      stage.style.width='min(100%, calc((100dvh - 250px) * '+ratio+'))';
-      stage.style.maxHeight='calc(100dvh - 250px)';
-    };
-    fitStage();
-    video.addEventListener('loadedmetadata',fitStage,{once:true});
-    const settings=track.getSettings?.()||{};
-    status.textContent='الكاميرا جاهزة. ضع الكارت داخل الإطار الأصفر. '+(settings.width&&settings.height?('دقة المعاينة '+settings.width+'×'+settings.height+'.'):'');
-  }catch(e){
-    console.error('Doctor camera error:',e);
-    stopDoctorCamera();
-    const reason=e?.name||'UnknownError';
-    const detail=(e?.message||'').slice(0,140);
-    const messages={
-      NotAllowedError:'المتصفح أو سياسة أمان الصفحة تمنع إذن الكاميرا.',
-      PermissionDeniedError:'المتصفح أو سياسة أمان الصفحة تمنع إذن الكاميرا.',
-      NotFoundError:'لم يتم العثور على كاميرا متاحة بالجهاز.',
-      NotReadableError:'الكاميرا مشغولة بتطبيق آخر أو تعذر تشغيلها من النظام.',
-      OverconstrainedError:'إعداد الكاميرا المطلوب غير مدعوم بالجهاز.',
-      SecurityError:'المتصفح منع الوصول للكاميرا لأسباب أمنية.'
-    };
-    status.textContent='تعذر فتح الكاميرا: '+(messages[reason]||reason)+(detail?' — '+detail:'')+' (رمز: '+reason+')';
-  }
-};
+// ماسح مستندات تلقائي: اكتشاف حدود الكارت، انتظار الثبات، ثم تصحيح المنظور والتقاطه.
+let doctorCardObjectUrl=null,tesseractLoadPromise=null,doctorCardFile=null,doctorCameraStream=null;
+let doctorCvReady=null,doctorScanTimer=null,doctorStableFrames=0,doctorLastCorners=null,doctorCaptureBusy=false;
+const doctorPhotoInput=$('doctorCardPhoto'),DOCTOR_PHOTO_DB='toktok-doctor-photo-v1';
+function openDoctorPhotoDb(){return new Promise((resolve,reject)=>{if(!('indexedDB'in window)){reject(new Error('التخزين المؤقت غير مدعوم.'));return;}const req=indexedDB.open(DOCTOR_PHOTO_DB,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('photos'))req.result.createObjectStore('photos');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error||new Error('تعذر فتح التخزين المؤقت.'));});}
+async function saveDoctorPhotoLocally(file){const db=await openDoctorPhotoDb();try{await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put({blob:file,type:file.type||'image/jpeg',name:file.name||'doctor-card.jpg',savedAt:Date.now()},'current');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}finally{db.close();}}
+async function restoreDoctorPhotoLocally(){try{const db=await openDoctorPhotoDb();const saved=await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readonly'),req=tx.objectStore('photos').get('current');req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});db.close();if(!saved?.blob||Date.now()-saved.savedAt>86400000)return;setDoctorPhoto(new File([saved.blob],saved.name||'doctor-card.jpg',{type:saved.type||'image/jpeg'}));$('doctorOcrStatus').textContent='استعدنا الصورة السابقة من الجهاز. يمكنك مراجعتها أو قراءتها.';}catch(e){console.warn('Photo restore:',e);}}
+async function clearDoctorPhotoLocally(){try{const db=await openDoctorPhotoDb();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').delete('current');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});db.close();}catch(e){console.warn(e);}}
+function setDoctorPhoto(file){doctorCardFile=file;if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);doctorCardObjectUrl=URL.createObjectURL(file);const p=$('doctorCardPreview');p.onload=()=>{p.style.display='block';p.scrollIntoView({behavior:'smooth',block:'center'});};p.onerror=()=>{$('doctorOcrStatus').textContent='تم الالتقاط لكن تعذر عرض الصورة؛ أعد المحاولة.';};p.src=doctorCardObjectUrl;p.classList.remove('hidden');p.style.cssText='display:block;width:100%;max-width:100%;max-height:360px;object-fit:contain;margin:8px auto;border-radius:10px;background:#eef2f7';$('readDoctorCardBtn').disabled=false;$('doctorOcrText').value='';}
+function stopDoctorCamera(){if(doctorScanTimer){clearInterval(doctorScanTimer);doctorScanTimer=null;}if(doctorCameraStream){doctorCameraStream.getTracks().forEach(t=>t.stop());doctorCameraStream=null;}$('doctorCameraVideo').srcObject=null;$('doctorCameraModal').classList.add('hidden');doctorStableFrames=0;doctorLastCorners=null;doctorCaptureBusy=false;}
+function loadDoctorCv(){if(window.cv?.Mat)return Promise.resolve(window.cv);if(doctorCvReady)return doctorCvReady;doctorCvReady=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://docs.opencv.org/4.x/opencv.js';s.async=true;s.onload=()=>{const started=Date.now();const poll=()=>{if(window.cv?.Mat){window.cv.onRuntimeInitialized=()=>resolve(window.cv);if(window.cv.Mat)resolve(window.cv);}else if(Date.now()-started>45000)reject(new Error('محرك اكتشاف حدود الكارت لم يكتمل تحميله.'));else setTimeout(poll,150);};poll();};s.onerror=()=>reject(new Error('تعذر تحميل ماسح المستندات.'));document.head.appendChild(s);});return doctorCvReady;}
+function orderDoctorCorners(points){const sum=points.map(p=>p.x+p.y),diff=points.map(p=>p.y-p.x);return [points[sum.indexOf(Math.min(...sum))],points[diff.indexOf(Math.min(...diff))],points[sum.indexOf(Math.max(...sum))],points[diff.indexOf(Math.max(...diff))]];}
+function detectDoctorCard(cv,video){const scale=Math.min(1,720/video.videoWidth),w=Math.round(video.videoWidth*scale),h=Math.round(video.videoHeight*scale);const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d',{willReadFrequently:true}).drawImage(video,0,0,w,h);const src=cv.imread(canvas),gray=new cv.Mat(),blur=new cv.Mat(),edges=new cv.Mat(),contours=new cv.MatVector(),hierarchy=new cv.Mat();let best=null,bestArea=0;try{cv.cvtColor(src,gray,cv.COLOR_RGBA2GRAY);cv.GaussianBlur(gray,blur,new cv.Size(5,5),0);cv.Canny(blur,edges,55,150);cv.dilate(edges,edges,cv.getStructuringElement(cv.MORPH_RECT,new cv.Size(3,3)));cv.findContours(edges,contours,hierarchy,cv.RETR_LIST,cv.CHAIN_APPROX_SIMPLE);for(let i=0;i<contours.size();i++){const cnt=contours.get(i),peri=cv.arcLength(cnt,true),approx=new cv.Mat();cv.approxPolyDP(cnt,approx,.02*peri,true);const area=Math.abs(cv.contourArea(approx));if(approx.rows===4&&area>bestArea&&area>w*h*.10&&cv.isContourConvex(approx)){const pts=[];for(let j=0;j<4;j++)pts.push({x:approx.intAt(j,0),y:approx.intAt(j,1)});best=orderDoctorCorners(pts);bestArea=area;}approx.delete();cnt.delete();}}finally{src.delete();gray.delete();blur.delete();edges.delete();contours.delete();hierarchy.delete();}return best?{points:best.map(p=>({x:p.x/scale,y:p.y/scale})),score:bestArea/(w*h)}:null;}
+function doctorCornersStable(points){if(!doctorLastCorners){doctorLastCorners=points;doctorStableFrames=0;return false;}const delta=points.reduce((n,p,i)=>n+Math.hypot(p.x-doctorLastCorners[i].x,p.y-doctorLastCorners[i].y),0)/4;doctorLastCorners=points;if(delta<5)doctorStableFrames++;else doctorStableFrames=0;return doctorStableFrames>=9;}
+function drawDoctorScanOverlay(points,video){const canvas=$('doctorScanOverlay'),rect=video.getBoundingClientRect(),stage=$('doctorCameraStage').getBoundingClientRect();canvas.width=Math.round(stage.width*devicePixelRatio);canvas.height=Math.round(stage.height*devicePixelRatio);const ctx=canvas.getContext('2d');ctx.scale(devicePixelRatio,devicePixelRatio);ctx.clearRect(0,0,stage.width,stage.height);if(!points)return;const vw=video.videoWidth,vh=video.videoHeight,scale=Math.min(rect.width/vw,rect.height/vh),ox=(rect.width-vw*scale)/2,oy=(rect.height-vh*scale)/2;ctx.beginPath();points.forEach((p,i)=>{const x=ox+p.x*scale,y=oy+p.y*scale;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.closePath();ctx.strokeStyle='#37e58a';ctx.lineWidth=4;ctx.shadowColor='#000';ctx.shadowBlur=5;ctx.stroke();}
+async function captureDoctorCardFromCorners(points){if(doctorCaptureBusy)return;doctorCaptureBusy=true;$('doctorScanHint').textContent='تم اكتشاف الكارت؛ جارٍ تثبيت الصورة وتصحيح الميل...';const cv=await loadDoctorCv(),video=$('doctorCameraVideo');const src=cv.imread(video),srcPts=cv.matFromArray(4,1,cv.CV_32FC2,points.flatMap(p=>[p.x,p.y]));const [tl,tr,br,bl]=points;const width=Math.min(2400,Math.round(Math.max(Math.hypot(br.x-bl.x,br.y-bl.y),Math.hypot(tr.x-tl.x,tr.y-tl.y)))),height=Math.min(3200,Math.round(Math.max(Math.hypot(tr.x-br.x,tr.y-br.y),Math.hypot(tl.x-bl.x,tl.y-bl.y))));const dstPts=cv.matFromArray(4,1,cv.CV_32FC2,[0,0,width-1,0,width-1,height-1,0,height-1]),M=cv.getPerspectiveTransform(srcPts,dstPts),dst=new cv.Mat();cv.warpPerspective(src,dst,M,new cv.Size(width,height),cv.INTER_CUBIC,cv.BORDER_REPLICATE);const out=document.createElement('canvas');cv.imshow(out,dst);const blob=await new Promise(resolve=>out.toBlob(resolve,'image/jpeg',.96));src.delete();srcPts.delete();dstPts.delete();M.delete();dst.delete();if(!blob)throw new Error('تعذر تجهيز صورة الكارت.');setDoctorPhoto(new File([blob],'doctor-card-scan.jpg',{type:'image/jpeg',lastModified:Date.now()}));stopDoctorCamera();$('doctorOcrStatus').textContent='تم مسح الكارت تلقائيًا وتصحيح الميل وإظهار الصورة للمراجعة. جارٍ حفظها مؤقتًا...';saveDoctorPhotoLocally(doctorCardFile).then(()=>$('doctorOcrStatus').textContent='الصورة الممسوحة جاهزة. راجعها ثم اضغط «قراءة البيانات من الصورة».').catch(()=>$('doctorOcrStatus').textContent='الصورة الممسوحة جاهزة للقراءة، لكن تعذر حفظ نسخة احتياطية.');}
+async function startDoctorAutoScan(){const video=$('doctorCameraVideo'),hint=$('doctorScanHint');hint.textContent='جارٍ تحميل ماسح المستندات...';try{const cv=await loadDoctorCv();hint.textContent='ضع الكارت بالكامل داخل الصورة وثبّت الموبايل؛ الالتقاط تلقائي.';doctorScanTimer=setInterval(()=>{if(doctorCaptureBusy||video.readyState<2)return;try{const found=detectDoctorCard(cv,video);drawDoctorScanOverlay(found?.points,video);if(found&&found.score>.12&&doctorCornersStable(found.points)){clearInterval(doctorScanTimer);doctorScanTimer=null;captureDoctorCardFromCorners(found.points).catch(e=>{console.error(e);doctorCaptureBusy=false;hint.textContent='تعذر مسح الكارت تلقائيًا. حرّك الكارت وحاول مرة أخرى.';startDoctorAutoScan();});}else hint.textContent=found?'تم رصد حدود الكارت؛ ثبّت الموبايل قليلًا...':'ابحث عن حدود الكارت؛ أظهره كاملًا مع خلفية متباينة.';}catch(e){console.warn('Scan frame:',e);}},180);}catch(e){hint.textContent=e.message+' يمكنك استخدام اختيار صورة محفوظة.';}}
+$('openDoctorCameraBtn').onclick=async()=>{const status=$('doctorOcrStatus');if(!window.isSecureContext||!navigator.mediaDevices?.getUserMedia){status.textContent='افتح الصفحة في Chrome عبر HTTPS للسماح بالكاميرا.';return;}try{status.textContent='جارٍ فتح الكاميرا الخلفية...';doctorCameraStream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}}});const video=$('doctorCameraVideo');video.srcObject=doctorCameraStream;video.muted=true;video.setAttribute('playsinline','');$('doctorCameraModal').classList.remove('hidden');await video.play();const stage=$('doctorCameraStage');const fit=()=>{if(!video.videoWidth)return;const ratio=video.videoWidth/video.videoHeight;stage.style.aspectRatio=video.videoWidth+' / '+video.videoHeight;stage.style.width='min(100%, calc((100dvh - 250px) * '+ratio+'))';};fit();video.addEventListener('loadedmetadata',fit,{once:true});await startDoctorAutoScan();}catch(e){console.error(e);stopDoctorCamera();status.textContent='تعذر فتح الكاميرا: '+(e.message||e.name||'خطأ غير معروف');}};
 $('closeDoctorCameraBtn').onclick=stopDoctorCamera;
-$('captureDoctorPhotoBtn').onclick=async()=>{
-  const btn=$('captureDoctorPhotoBtn'),video=$('doctorCameraVideo');
-  if(!doctorCameraStream){$('doctorOcrStatus').textContent='الكاميرا غير مفتوحة. افتحها مرة أخرى.';return;}
-  if(!video.videoWidth||!video.videoHeight){$('doctorOcrStatus').textContent='انتظر حتى تظهر صورة الكاميرا بوضوح.';return;}
-  btn.disabled=true;
-  $('doctorOcrStatus').textContent='جارٍ التقاط الصورة الأصلية بأعلى دقة متاحة...';
-  try{
-    const track=doctorCameraStream.getVideoTracks()[0];
-    let blob=null;
-    // Prefer the camera's still-photo pipeline for full sensor resolution; do not crop the frame.
-    if('ImageCapture' in window){
-      try{blob=await new ImageCapture(track).takePhoto();}catch(photoError){console.warn('Still-photo capture unavailable; using full video frame:',photoError);}
-    }
-    // Compatibility fallback: preserve the entire camera frame, not the yellow guide rectangle only.
-    if(!blob){
-      blob=await new Promise((resolve,reject)=>{
-        const canvas=document.createElement('canvas');
-        canvas.width=video.videoWidth;canvas.height=video.videoHeight;
-        const ctx=canvas.getContext('2d',{alpha:false});
-        if(!ctx){reject(new Error('تعذر تجهيز الصورة على هذا الجهاز.'));return;}
-        ctx.drawImage(video,0,0,canvas.width,canvas.height);
-        canvas.toBlob(result=>result?resolve(result):reject(new Error('تعذر حفظ لقطة الكاميرا.')),'image/jpeg',.94);
-      });
-    }
-    if(!blob)throw new Error('لم يتم إنشاء ملف الصورة.');
-    doctorCardFile=new File([blob],'doctor-card.jpg',{type:blob.type||'image/jpeg',lastModified:Date.now()});
-    if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
-    doctorCardObjectUrl=URL.createObjectURL(doctorCardFile);
-    const preview=$('doctorCardPreview');
-    preview.onload=()=>{preview.style.display='block';preview.scrollIntoView({behavior:'smooth',block:'center'});};
-    preview.onerror=()=>{$('doctorOcrStatus').textContent='تم التقاط الصورة لكن تعذر عرض المعاينة. أعد التقاطها.';};
-    preview.style.display='block';
-    preview.style.width='100%';
-    preview.style.maxHeight='320px';
-    preview.style.objectFit='contain';
-    preview.style.background='#eef2f7';
-    preview.src=doctorCardObjectUrl;
-    preview.classList.remove('hidden');
-    $('readDoctorCardBtn').disabled=false;
-    $('doctorOcrText').value='';
-    stopDoctorCamera();
-    requestAnimationFrame(()=>preview.scrollIntoView({behavior:'smooth',block:'center'}));
-    $('doctorOcrStatus').textContent='تم التقاط الصورة الأصلية كاملة دون قصّ. جارٍ حفظ نسخة مؤقتة على الجهاز...';
-    saveDoctorPhotoLocally(doctorCardFile).then(()=>{
-      $('doctorOcrStatus').textContent='الصورة الأصلية كاملة محفوظة مؤقتًا على الجهاز. راجعها ثم اضغط «قراءة البيانات من الصورة».';
-    }).catch(()=>{
-      $('doctorOcrStatus').textContent='تم التقاط الصورة الأصلية كاملة، لكن تعذر حفظ نسخة احتياطية. يمكنك قراءة الصورة الآن.';
-    });
-  }catch(e){
-    console.error('Doctor photo capture failed:',e);
-    $('doctorOcrStatus').textContent='تعذر التقاط الصورة: '+(e.message||'حاول مرة أخرى.');
-  }finally{btn.disabled=false;}
-};
+$('captureDoctorPhotoBtn').onclick=async()=>{const video=$('doctorCameraVideo');if(!doctorCameraStream||!video.videoWidth)return;$('doctorOcrStatus').textContent='جارٍ التقاط الصورة كاملة...';try{const canvas=document.createElement('canvas');canvas.width=video.videoWidth;canvas.height=video.videoHeight;canvas.getContext('2d').drawImage(video,0,0);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',.95));if(!blob)throw new Error('تعذر التقاط الصورة');setDoctorPhoto(new File([blob],'doctor-card-manual.jpg',{type:'image/jpeg'}));stopDoctorCamera();saveDoctorPhotoLocally(doctorCardFile);$('doctorOcrStatus').textContent='تم التقاط الصورة كاملة. راجعها قبل القراءة.';}catch(e){$('doctorOcrStatus').textContent=e.message;}};
 $('chooseDoctorPhotoBtn').onclick=()=>doctorPhotoInput.click();
-doctorPhotoInput.addEventListener('change',()=>{
-  const file=doctorPhotoInput.files?.[0];
-  $('doctorOcrText').value='';
-  if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
-  doctorCardObjectUrl=null;doctorCardFile=null;
-  if(!file){$('doctorCardPreview').classList.add('hidden');$('readDoctorCardBtn').disabled=true;return;}
-  if(!file.type.startsWith('image/')){$('doctorOcrStatus').textContent='اختار صورة بصيغة JPG أو PNG.';return;}
-  if(file.size>12*1024*1024){$('doctorOcrStatus').textContent='حجم الصورة كبير. اختار صورة أقل من 12 ميجابايت.';doctorPhotoInput.value='';return;}
-  doctorCardFile=file;doctorCardObjectUrl=URL.createObjectURL(file);
-  $('doctorCardPreview').src=doctorCardObjectUrl;
-  $('doctorCardPreview').classList.remove('hidden');
-  $('readDoctorCardBtn').disabled=false;
-  $('doctorOcrStatus').textContent='الصورة جاهزة. جارٍ حفظ نسخة مؤقتة على الجهاز...';
-  saveDoctorPhotoLocally(file).then(()=>$('doctorOcrStatus').textContent='الصورة جاهزة ومحفوظة مؤقتًا على الجهاز. اضغط «قراءة البيانات من الصورة».')
-    .catch(()=>$('doctorOcrStatus').textContent='الصورة جاهزة للقراءة، لكن تعذر حفظ نسخة احتياطية.');
-});
-window.addEventListener('pagehide',stopDoctorCamera);
-restoreDoctorPhotoLocally();
-
-function withDoctorOcrTimeout(promise,ms,label){
-  let timer;
-  return Promise.race([
-    promise,
-    new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);})
-  ]).finally(()=>clearTimeout(timer));
-}
-async function loadDoctorOcr(){
-  if(window.Tesseract)return window.Tesseract;
-  if(!tesseractLoadPromise)tesseractLoadPromise=new Promise((resolve,reject)=>{
-    const s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
-    s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('تم تحميل الصفحة لكن أداة قراءة الصور لم تبدأ.'));
-    s.onerror=()=>{tesseractLoadPromise=null;reject(new Error('تعذر تحميل أداة قراءة الصور من الإنترنت. جرّب اتصالًا أقوى ثم أعد المحاولة.'));};
-    document.head.appendChild(s);
-    setTimeout(()=>{if(!window.Tesseract){tesseractLoadPromise=null;reject(new Error('انتهت مهلة تحميل أداة قراءة الصور. تحقق من الإنترنت ثم أعد المحاولة.'));}},30000);
-  });
-  return withDoctorOcrTimeout(tesseractLoadPromise,35000,'تحميل أداة قراءة الصور استغرق وقتًا أطول من اللازم.');
-}
+doctorPhotoInput.addEventListener('change',()=>{const file=doctorPhotoInput.files?.[0];$('doctorOcrText').value='';if(!file){$('doctorCardPreview').classList.add('hidden');$('readDoctorCardBtn').disabled=true;return;}if(!file.type.startsWith('image/')){$('doctorOcrStatus').textContent='اختار صورة JPG أو PNG.';return;}if(file.size>15*1024*1024){$('doctorOcrStatus').textContent='اختار صورة أقل من 15 ميجابايت.';doctorPhotoInput.value='';return;}setDoctorPhoto(file);$('doctorOcrStatus').textContent='الصورة جاهزة. جارٍ حفظ نسخة مؤقتة...';saveDoctorPhotoLocally(file).then(()=>$('doctorOcrStatus').textContent='الصورة جاهزة للقراءة.');});
+window.addEventListener('pagehide',stopDoctorCamera);restoreDoctorPhotoLocally();
+function withDoctorOcrTimeout(promise,ms,label){let timer;return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(label)),ms);})]).finally(()=>clearTimeout(timer));}
+async function loadDoctorOcr(){if(window.Tesseract)return window.Tesseract;if(!tesseractLoadPromise)tesseractLoadPromise=new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';s.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('أداة قراءة الصور لم تبدأ.'));s.onerror=()=>{tesseractLoadPromise=null;reject(new Error('تعذر تحميل أداة القراءة.'));};document.head.appendChild(s);});return withDoctorOcrTimeout(tesseractLoadPromise,35000,'تحميل أداة القراءة استغرق وقتًا طويلًا.');}
 function fillDoctorField(id,value){if(value&&!$(id).value.trim())$(id).value=value.trim();}
-function applyDoctorOcrText(raw){
-  const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-  const labeled=patterns=>{for(const line of lines)for(const pattern of patterns){const m=line.match(pattern);if(m?.[1])return m[1].replace(/[|•]+$/,'').trim();}return '';};
-  const name=labeled([/(?:اسم\s*الطبيب|دكتور|الدكتور|doctor\s*name|dr\.?)[:：\-\s]+(.+)/i]);
-  const specialty=labeled([/(?:التخصص|التخصصات|speciality|specialty)[:：\-\s]+(.+)/i]);
-  const clinic=labeled([/(?:اسم\s*العيادة|العيادة|clinic)[:：\-\s]+(.+)/i]);
-  const address=labeled([/(?:العنوان|عنوان\s*العيادة|address)[:：\-\s]+(.+)/i]);
-  const phoneMatch=raw.match(/(?:\+?20\s*)?0?1[0125][\s\-()]*\d[\d\s\-()]{6,12}/);
-  if(name)fillDoctorField('doctorName',name);
-  if(specialty)fillDoctorField('doctorSpecialty',specialty);
-  if(clinic)fillDoctorField('doctorClinic',clinic);
-  if(address)fillDoctorField('doctorAddress',address);
-  if(phoneMatch){const phone=normalizePhone(phoneMatch[0]);if(phone)fillDoctorField('doctorPhone',phone);}
-  return {name:!!name,specialty:!!specialty,clinic:!!clinic,address:!!address,phone:!!phoneMatch};
-}
-$('readDoctorCardBtn').onclick=async()=>{
-  const file=doctorCardFile,btn=$('readDoctorCardBtn'),status=$('doctorOcrStatus');
-  if(!file){status.textContent='التقط صورة داخل الإطار أو اختر صورة محفوظة أولًا.';return;}
-  btn.disabled=true;$('doctorOcrText').value='';
-  let worker=null;
-  try{
-    status.textContent='جارٍ تحميل قارئ العربية والإنجليزية. أول مرة قد تستغرق وقتًا...';
-    const T=await loadDoctorOcr();
-    status.textContent='تم تحميل الأداة. جارٍ تجهيز محرك القراءة...';
-    worker=await withDoctorOcrTimeout(T.createWorker('ara+eng',1,{
-      // Use the smaller fast language models to reduce first-time downloads on mobile networks.
-      workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
-      langPath:'https://tessdata.projectnaptha.com/4.0.0_fast',
-      logger:m=>{
-        if(m.status==='loading tesseract core')status.textContent='جارٍ تنزيل وتجهيز محرك القراءة...';
-        else if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة العربية والإنجليزية (نسخة سريعة)...';
-        else if(m.status==='initializing api')status.textContent='جارٍ تهيئة قارئ النصوص...';
-        else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة الصورة: '+Math.round(m.progress*100)+'٪';
-      },
-      errorHandler:e=>{console.error('Tesseract worker:',e);}
-    }),180000,'تجهيز محرك القراءة أو ملفات اللغة استغرق أكثر من 3 دقائق. أعد المحاولة مع اتصال إنترنت ثابت.');
-    status.textContent='تم تجهيز القارئ. جارٍ قراءة الصورة...';
-    const result=await withDoctorOcrTimeout(worker.recognize(file),120000,'قراءة الصورة استغرقت أكثر من دقيقتين. جرّب صورة أوضح وأصغر حجمًا.');
-    const raw=result?.data?.text||'';
-    $('doctorOcrText').value=raw;
-    if(!raw.trim()){status.textContent='لم نتمكن من قراءة نص واضح. جرّب صورة أقرب وإضاءة أفضل.';return;}
-    const found=applyDoctorOcrText(raw),count=Object.values(found).filter(Boolean).length;
-    status.textContent=count?'تم استخراج بعض البيانات. راجع الخانات وصحّحها قبل الحفظ.':'تم استخراج النص، لكن لم نتعرف تلقائيًا على أسماء الخانات. راجع النص وانقل البيانات يدويًا.';
-  }catch(e){status.textContent='تعذرت قراءة الصورة: '+(e.message||'خطأ غير معروف');}
-  finally{if(worker){try{await worker.terminate();}catch(_){}}btn.disabled=false;}
-};
-
+function applyDoctorOcrText(raw){const lines=raw.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const labeled=patterns=>{for(const line of lines)for(const pattern of patterns){const m=line.match(pattern);if(m?.[1])return m[1].replace(/[|•]+$/,'').trim();}return '';};const name=labeled([/(?:اسم\s*الطبيب|دكتور|الدكتور|doctor\s*name|dr\.?)[:：\-\s]+(.+)/i]);const specialty=labeled([/(?:التخصص|التخصصات|speciality|specialty)[:：\-\s]+(.+)/i]);const clinic=labeled([/(?:اسم\s*العيادة|العيادة|clinic)[:：\-\s]+(.+)/i]);const address=labeled([/(?:العنوان|عنوان\s*العيادة|address)[:：\-\s]+(.+)/i]);const phoneMatch=raw.match(/(?:\+?20\s*)?0?1[0125][\s\-()]*\d[\d\s\-()]{6,12}/);if(name)fillDoctorField('doctorName',name);if(specialty)fillDoctorField('doctorSpecialty',specialty);if(clinic)fillDoctorField('doctorClinic',clinic);if(address)fillDoctorField('doctorAddress',address);if(phoneMatch){const phone=normalizePhone(phoneMatch[0]);if(phone)fillDoctorField('doctorPhone',phone);}return {name:!!name,specialty:!!specialty,clinic:!!clinic,address:!!address,phone:!!phoneMatch};}
+async function prepareDoctorOcrImage(file){const bitmap=await createImageBitmap(file),canvas=document.createElement('canvas'),ctx=canvas.getContext('2d',{willReadFrequently:true});const scale=Math.min(2,2600/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const image=ctx.getImageData(0,0,canvas.width,canvas.height),d=image.data;for(let i=0;i<d.length;i+=4){const y=.299*d[i]+.587*d[i+1]+.114*d[i+2];const enhanced=Math.max(0,Math.min(255,(y-128)*1.35+128));d[i]=d[i+1]=d[i+2]=enhanced;}ctx.putImageData(image,0,0);return await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));}
+$('readDoctorCardBtn').onclick=async()=>{const file=doctorCardFile,btn=$('readDoctorCardBtn'),status=$('doctorOcrStatus');if(!file){status.textContent='التقط الكارت أو اختر صورة محفوظة أولًا.';return;}btn.disabled=true;$('doctorOcrText').value='';let worker=null;try{status.textContent='جارٍ تحسين الصورة وتجهيز قارئ العربية والإنجليزية...';const processed=await prepareDoctorOcrImage(file);const T=await loadDoctorOcr();status.textContent='جارٍ تحميل نماذج اللغة العربية والإنجليزية...';worker=await withDoctorOcrTimeout(T.createWorker('ara+eng',1,{workerPath:'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',langPath:'https://tessdata.projectnaptha.com/4.0.0_fast',logger:m=>{if(m.status==='loading language traineddata')status.textContent='جارٍ تحميل ملفات اللغة...';else if(m.status==='recognizing text'&&m.progress!=null)status.textContent='جارٍ قراءة النص: '+Math.round(m.progress*100)+'٪';}}),180000,'تحميل محرك القراءة استغرق أكثر من 3 دقائق.');status.textContent='تم تجهيز القارئ. جارٍ قراءة الصورة المحسّنة...';const result=await withDoctorOcrTimeout(worker.recognize(processed,{rotateAuto:true}),120000,'قراءة الصورة استغرقت أكثر من دقيقتين.');const raw=result?.data?.text||'';$('doctorOcrText').value=raw;if(!raw.trim()){status.textContent='لم يظهر نص مقروء. أعد التصوير مع إضاءة جيدة وقرّب الكارت.';return;}const found=applyDoctorOcrText(raw),count=Object.values(found).filter(Boolean).length;status.textContent=count?'تم استخراج '+count+' بيانات محتملة. راجعها وصحّحها قبل الحفظ.':'تم استخراج نص، لكن لم تُكتشف الخانات تلقائيًا. راجع النص يدويًا.';}catch(e){console.error('Doctor OCR:',e);status.textContent='تعذرت القراءة: '+(e.message||'خطأ غير معروف');}finally{if(worker){try{await worker.terminate();}catch(_){}}btn.disabled=false;}};
 /* ---------- دخول الإدارة بالبريد وكلمة المرور ---------- */
 $('emailAdminBtn').onclick = async () => {
   $('authMsg').textContent = '';
