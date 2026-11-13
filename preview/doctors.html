@@ -83,10 +83,10 @@ msg('تم إرسال طلب الحجز بنجاح.');selectedSlot=null;$('bookBt
 };
 async function loadDoctorBookings(){
 const {data:doctor,error:doctorError}=await sb.from('doctor_profiles').select('id,display_name,is_active').eq('user_id',user.id).maybeSingle();
-if(doctorError){$('doctorBookingsPanel').hidden=true;return}
-myDoctor=doctor;
-if(!myDoctor){$('doctorBookingsPanel').hidden=true;return}
 $('doctorBookingsPanel').hidden=false;
+if(doctorError){$('doctorBookings').textContent='تعذر التحقق من ملف الطبيب: '+doctorError.message;return}
+myDoctor=doctor;
+if(!myDoctor){$('doctorBookings').textContent='لم يتم العثور على ملف طبيب مرتبط بهذا الحساب. تأكد من استخدام الحساب الذي أرسل طلب الانضمام.';return}
 if(!myDoctor.is_active){$('doctorBookings').innerHTML='<div class="empty">ملف العيادة تحت المراجعة أو غير مفعّل؛ ستظهر الحجوزات هنا بعد الاعتماد.</div>';return}
 const {data,error}=await sb.from('doctor_appointments').select('id,appointment_at,status,patient_name,patient_phone,notes').eq('doctor_id',myDoctor.id).order('appointment_at',{ascending:true}).limit(50);
 const box=$('doctorBookings');box.innerHTML='';
