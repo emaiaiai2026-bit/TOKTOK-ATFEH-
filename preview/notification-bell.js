@@ -18,7 +18,7 @@
   function mount() {
     if (document.getElementById('siteNotificationBell')) return;
     var style = document.createElement('style');
-    style.textContent = '#siteNotificationBell{position:fixed;top:14px;left:14px;z-index:10000;width:48px;height:48px;border-radius:16px;background:#fff;color:#0B1F4B;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 5px 18px rgba(5,20,55,.22);border:1px solid #dce3f0}#siteNotificationBell svg{width:24px;height:24px}#siteNotificationBell .notificationBadge{position:absolute;top:-6px;right:-6px;min-width:21px;height:21px;padding:0 5px;border-radius:12px;background:#e53935;color:#fff;border:2px solid #fff;font:800 11px/17px Cairo,Arial,sans-serif;text-align:center}#siteNotificationBell:focus-visible{outline:3px solid #FFB400;outline-offset:3px}';
+    style.textContent = '#siteNotificationBell[hidden]{display:none!important}#siteNotificationBell{position:fixed;top:14px;left:14px;z-index:10000;width:48px;height:48px;border-radius:16px;background:#fff;color:#0B1F4B;display:flex;align-items:center;justify-content:center;text-decoration:none;box-shadow:0 5px 18px rgba(5,20,55,.22);border:1px solid #dce3f0}#siteNotificationBell svg{width:24px;height:24px}#siteNotificationBell .notificationBadge{position:absolute;top:-6px;right:-6px;min-width:21px;height:21px;padding:0 5px;border-radius:12px;background:#e53935;color:#fff;border:2px solid #fff;font:800 11px/17px Cairo,Arial,sans-serif;text-align:center}#siteNotificationBell:focus-visible{outline:3px solid #FFB400;outline-offset:3px}';
     document.head.appendChild(style);
     var a = document.createElement('a');
     a.id = 'siteNotificationBell';
