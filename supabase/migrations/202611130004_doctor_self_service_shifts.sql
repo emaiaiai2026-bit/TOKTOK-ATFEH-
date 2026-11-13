@@ -17,7 +17,39 @@ create table if not exists public.doctor_work_shifts (
 create index if not exists doctor_work_shifts_lookup
   on public.doctor_work_shifts(doctor_id, weekday, is_active, start_time);
 
--- Database-level guard: even concurrent requests cannot create overlapping active shifts.
+-- Preserve legacy weekly hours before enforcing the overlap constraint.
+-- If legacy rows overlap, keep the first active row and retain later rows as inactive
+-- so the migration succeeds without silently deleting historical schedule data.
+do $migration$
+declare
+  r record;
+  v_active boolean;
+begin
+  for r in
+    select a.doctor_id,a.weekday,a.start_time,a.end_time,a.slot_minutes,a.is_active
+    from public.doctor_availability a
+    order by a.doctor_id,a.weekday,a.start_time,a.end_time
+  loop
+    if not exists (
+      select 1 from public.doctor_work_shifts s
+      where s.doctor_id=r.doctor_id and s.weekday=r.weekday
+        and s.start_time=r.start_time and s.end_time=r.end_time
+    ) then
+      v_active := coalesce(r.is_active,false) and not exists (
+        select 1 from public.doctor_work_shifts s
+        where s.doctor_id=r.doctor_id and s.weekday=r.weekday and s.is_active
+          and r.start_time<s.end_time and r.end_time>s.start_time
+      );
+      insert into public.doctor_work_shifts
+        (doctor_id,weekday,start_time,end_time,slot_minutes,is_active)
+      values
+        (r.doctor_id,r.weekday,r.start_time,r.end_time,r.slot_minutes,v_active);
+    end if;
+  end loop;
+end
+$migration$;
+
+-- Add the database-level guard only after legacy data has been reconciled.
 alter table public.doctor_work_shifts
   drop constraint if exists doctor_work_shifts_no_overlap;
 alter table public.doctor_work_shifts
@@ -27,16 +59,6 @@ alter table public.doctor_work_shifts
     weekday with =,
     int4range(extract(epoch from start_time)::integer, extract(epoch from end_time)::integer, '[)') with &&
   ) where (is_active);
-
--- Preserve the already-configured legacy weekly hours as the first shift.
-insert into public.doctor_work_shifts(doctor_id,weekday,start_time,end_time,slot_minutes,is_active)
-select a.doctor_id,a.weekday,a.start_time,a.end_time,a.slot_minutes,a.is_active
-from public.doctor_availability a
-where not exists (
-  select 1 from public.doctor_work_shifts s
-  where s.doctor_id=a.doctor_id and s.weekday=a.weekday
-    and s.start_time=a.start_time and s.end_time=a.end_time
-);
 
 alter table public.doctor_work_shifts enable row level security;
 drop policy if exists doctor_work_shifts_read_active on public.doctor_work_shifts;
