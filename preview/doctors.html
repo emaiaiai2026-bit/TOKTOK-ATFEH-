@@ -82,8 +82,11 @@ if(error){msg(error.message.includes('already booked')?'الموعد اتحجز 
 msg('تم إرسال طلب الحجز بنجاح.');selectedSlot=null;$('bookBtn').disabled=true;await renderBookings();await renderSlots()
 };
 async function loadDoctorBookings(){
+// Patient booking page must never display the doctor's private clinic dashboard.
+// Doctor appointment management will live on a separate doctor-facing page.
+$('doctorBookingsPanel').hidden=true;
+return;
 const {data:doctor,error:doctorError}=await sb.from('doctor_profiles').select('id,display_name,is_active').eq('user_id',user.id).maybeSingle();
-$('doctorBookingsPanel').hidden=false;
 if(doctorError){$('doctorBookings').textContent='تعذر التحقق من ملف الطبيب: '+doctorError.message;return}
 myDoctor=doctor;
 if(!myDoctor){$('doctorBookings').textContent='لم يتم العثور على ملف طبيب مرتبط بهذا الحساب. تأكد من استخدام الحساب الذي أرسل طلب الانضمام.';return}
