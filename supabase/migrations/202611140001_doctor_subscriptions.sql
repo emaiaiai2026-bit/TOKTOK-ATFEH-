@@ -72,6 +72,7 @@ as $$
     where d.id=p_doctor_id
       and d.is_active=true
       and cfg.singleton=true
+      and coalesce(s.status,'') <> 'suspended'
       and (
         cfg.promotion_enabled=true
         or (s.status='active' and s.starts_at<=now() and s.ends_at>now())
