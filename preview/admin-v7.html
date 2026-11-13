@@ -565,6 +565,22 @@ async function loadDoctorSubscriptionAdmin(){
   status.textContent=!d.is_approved?'لم تتم الموافقة على الطبيب':(d.subscription_status==='suspended'?'موقوف بواسطة الإدارة':(cfg?.promotion_enabled?'متاح مجانًا خلال فترة الترويج':(live?'اشتراك مدفوع ساري حتى '+new Date(d.ends_at).toLocaleDateString('ar-EG'):'لا يوجد اشتراك ساري')));
   card.append(title,status);
   if(d.is_approved){
+   const history=document.createElement('div');history.className='hint';history.hidden=true;
+   const historyBtn=document.createElement('button');historyBtn.className='sm';historyBtn.textContent='سجل الدفعات';
+   historyBtn.onclick=async()=>{
+    history.hidden=false;history.textContent='جاري تحميل سجل الدفعات...';
+    const {data,error}=await sb.rpc('admin_list_doctor_subscription_payments',{p_doctor_id:d.doctor_id});
+    if(error){history.textContent='تعذر تحميل السجل: '+error.message;return;}
+    history.innerHTML='';
+    if(!data?.length){history.textContent='لا توجد دفعات مسجلة لهذا الطبيب.';return;}
+    data.forEach(p=>{
+     const row=document.createElement('div');row.className='hint';
+     const methods={cash:'نقدي',instapay:'إنستا باي',bank_transfer:'تحويل بنكي',other:'أخرى'};
+     row.textContent=Number(p.amount).toFixed(2)+' جنيه — '+p.months+' شهر — '+(methods[p.method]||p.method)+' — '+new Date(p.paid_at).toLocaleDateString('ar-EG')+' — حتى '+new Date(p.period_end).toLocaleDateString('ar-EG')+(p.reference_note?' — '+p.reference_note:'');
+     history.append(row);
+    });
+   };
+   card.append(historyBtn,history);
    const pay=document.createElement('button');pay.className='sm go';pay.textContent='تسجيل دفعة وتجديد';
    pay.onclick=async()=>{
     const amount=prompt('قيمة المبلغ المستلم بالجنيه:',String(Number(cfg?.monthly_price||0)));
