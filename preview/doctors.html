@@ -44,7 +44,7 @@ if(profile){$('patientName').value=profile.name||'';$('patientPhone').value=prof
 $('date').min=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
 function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 async function loadDoctors(){
-const {data,error}=await sb.from('doctor_profiles').select('id,display_name,specialty,clinic_name,address,phone,bio').eq('is_active',true).order('display_name');
+const {data,error}=await sb.rpc('list_bookable_doctors');
 if(error){$('doctors').textContent='تعذر تحميل الأطباء: '+error.message;return}
 doctors=data||[];const box=$('doctors');box.innerHTML='';
 if(!doctors.length){box.innerHTML='<div class="empty">مفيش أطباء متاحين للحجز حاليًا. هيظهروا هنا بعد إضافة الأطباء وتفعيلهم من الإدارة.</div>';return}
