@@ -40,5 +40,5 @@ $('list').appendChild(el)});
 $('readAll').onclick=async()=>{$('readAll').disabled=true;const {error}=await sb.rpc('mark_all_notifications_read');if(error){$('msg').textContent='تعذر تحديد الإشعارات كمقروءة: '+error.message;$('readAll').disabled=false;return}await load()};
 await load();setInterval(load,30000);
 }
-</script><script src="./notification-bell.js" defer></script>
+</script>
 </body></html>
