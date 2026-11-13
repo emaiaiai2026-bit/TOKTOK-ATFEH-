@@ -405,11 +405,20 @@ $('captureDoctorPhotoBtn').onclick=async()=>{
     doctorCardFile=new File([blob],'doctor-card.jpg',{type:blob.type||'image/jpeg',lastModified:Date.now()});
     if(doctorCardObjectUrl)URL.revokeObjectURL(doctorCardObjectUrl);
     doctorCardObjectUrl=URL.createObjectURL(doctorCardFile);
-    $('doctorCardPreview').src=doctorCardObjectUrl;
-    $('doctorCardPreview').classList.remove('hidden');
+    const preview=$('doctorCardPreview');
+    preview.onload=()=>{preview.style.display='block';preview.scrollIntoView({behavior:'smooth',block:'center'});};
+    preview.onerror=()=>{$('doctorOcrStatus').textContent='تم التقاط الصورة لكن تعذر عرض المعاينة. أعد التقاطها.';};
+    preview.style.display='block';
+    preview.style.width='100%';
+    preview.style.maxHeight='320px';
+    preview.style.objectFit='contain';
+    preview.style.background='#eef2f7';
+    preview.src=doctorCardObjectUrl;
+    preview.classList.remove('hidden');
     $('readDoctorCardBtn').disabled=false;
     $('doctorOcrText').value='';
     stopDoctorCamera();
+    requestAnimationFrame(()=>preview.scrollIntoView({behavior:'smooth',block:'center'}));
     $('doctorOcrStatus').textContent='تم التقاط الصورة الأصلية كاملة دون قصّ. جارٍ حفظ نسخة مؤقتة على الجهاز...';
     saveDoctorPhotoLocally(doctorCardFile).then(()=>{
       $('doctorOcrStatus').textContent='الصورة الأصلية كاملة محفوظة مؤقتًا على الجهاز. راجعها ثم اضغط «قراءة البيانات من الصورة».';
