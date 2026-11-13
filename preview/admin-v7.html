@@ -163,6 +163,16 @@
       <h2>اعتماد الأطباء</h2>
       <p class="hint">مراجعة طلبات الانضمام واعتماد الطبيب فقط. إدارة العيادة والمواعيد من داخل الخدمة الطبية.</p>
       <div id="adminDoctorList"></div>
+      <div class="card" style="margin-top:14px">
+        <h2 style="font-size:18px">اشتراكات الأطباء</h2>
+        <p class="hint">نظام مستقل عن اشتراكات السائقين. الترويج المجاني مفعّل عند بداية الإطلاق، ويمكن إيقافه من هنا لاحقًا.</p>
+        <label style="display:block;margin:10px 0"><input id="doctorPromoEnabled" type="checkbox" checked style="width:auto"> فترة الترويج المجاني مفعّلة</label>
+        <label for="doctorMonthlyPrice">سعر الاشتراك الشهري الموحد (جنيه)</label>
+        <input id="doctorMonthlyPrice" type="number" min="0" step="0.01" inputmode="decimal" value="0">
+        <button class="btn" id="saveDoctorSubSettings" type="button">حفظ إعدادات الاشتراكات</button>
+        <p class="hint" id="doctorSubSettingsMsg"></p>
+      </div>
+      <div id="doctorSubscriptionList" style="margin-top:12px">جاري تحميل الاشتراكات...</div>
     </section>
     <section class="pane hidden" id="paneSettings">
       <h2>الأسعار والعمولة</h2>
@@ -479,7 +489,7 @@ function showTab(name){
   if (name === 'map' && map) setTimeout(() => map.invalidateSize(), 50);
   if (name === 'rides') loadRides();
   if (name === 'customers') loadCustomers();
-  if (name === 'doctors') loadAdminDoctors();
+  if (name === 'doctors') { loadAdminDoctors(); loadDoctorSubscriptionAdmin(); }
 }
 $('tabMap').onclick = () => showTab('map');
 $('tabDrivers').onclick = () => showTab('drivers');
@@ -513,6 +523,79 @@ async function loadAdminDoctors(){
    card.append(approve);
   }else{
    const badge=document.createElement('span');badge.className='chip on';badge.textContent='تمت الموافقة';card.append(badge);
+  }
+  box.append(card);
+ });
+}
+/* ---------- اشتراكات الأطباء ---------- */
+async function loadDoctorSubscriptionAdmin(){
+ const box=$('doctorSubscriptionList');if(!box)return;
+ box.textContent='جارٍ تحميل الاشتراكات...';
+ const [settingsRes,listRes]=await Promise.all([
+  sb.rpc('admin_get_doctor_subscription_settings'),
+  sb.rpc('admin_list_doctor_subscriptions')
+ ]);
+ if(settingsRes.error){box.textContent='تعذر تحميل إعدادات الاشتراكات: '+settingsRes.error.message;return;}
+ const cfg=settingsRes.data?.[0];
+ if(cfg){
+  $('doctorPromoEnabled').checked=!!cfg.promotion_enabled;
+  $('doctorMonthlyPrice').value=Number(cfg.monthly_price||0);
+  $('doctorSubSettingsMsg').textContent=cfg.promotion_enabled?'الترويج المجاني مفعّل؛ لن تُطلب أي مدفوعات من الأطباء.':'الاشتراكات المدفوعة مفعّلة.';
+ }
+ $('saveDoctorSubSettings').onclick=async()=>{
+  const promo=$('doctorPromoEnabled').checked;
+  const price=Number($('doctorMonthlyPrice').value);
+  if(!Number.isFinite(price)||price<0){toast('أدخل سعرًا صحيحًا.');return;}
+  if(!promo&&price<=0){toast('حدد السعر الشهري قبل إيقاف الترويج المجاني.');return;}
+  if(!promo&&!confirm('إيقاف الترويج سيمنع الأطباء غير المشتركين من استقبال حجوزات جديدة. هل تريد المتابعة؟'))return;
+  $('saveDoctorSubSettings').disabled=true;
+  const {error}=await sb.rpc('admin_update_doctor_subscription_settings',{p_promotion_enabled:promo,p_monthly_price:price});
+  $('saveDoctorSubSettings').disabled=false;
+  if(error){toast('تعذر حفظ الإعدادات: '+error.message);return;}
+  toast('تم حفظ إعدادات اشتراكات الأطباء.');await loadDoctorSubscriptionAdmin();
+ };
+ if(listRes.error){box.textContent='تعذر تحميل قائمة الاشتراكات: '+listRes.error.message;return;}
+ const rows=listRes.data||[];box.innerHTML='';
+ if(!rows.length){box.textContent='لا توجد ملفات أطباء حتى الآن.';return;}
+ rows.forEach(d=>{
+  const card=document.createElement('div');card.className='card';
+  const title=document.createElement('b');title.textContent=(d.display_name||'طبيب')+' — '+(d.specialty||'بدون تخصص');
+  const status=document.createElement('p');status.className='hint';
+  const live=d.subscription_status==='active'&&d.ends_at&&new Date(d.ends_at)>new Date();
+  status.textContent=!d.is_approved?'لم تتم الموافقة على الطبيب':(cfg?.promotion_enabled?'متاح مجانًا خلال فترة الترويج':(live?'اشتراك مدفوع ساري حتى '+new Date(d.ends_at).toLocaleDateString('ar-EG'):(d.subscription_status==='suspended'?'الاشتراك موقوف':'لا يوجد اشتراك ساري')));
+  card.append(title,status);
+  if(d.is_approved){
+   const pay=document.createElement('button');pay.className='sm go';pay.textContent='تسجيل دفعة وتجديد';
+   pay.onclick=async()=>{
+    const amount=prompt('قيمة المبلغ المستلم بالجنيه:',String(Number(cfg?.monthly_price||0)));
+    if(amount===null)return;
+    const months=prompt('عدد الشهور:', '1');if(months===null)return;
+    const method=prompt('طريقة الدفع: cash أو instapay أو bank_transfer أو other','cash');if(method===null)return;
+    const note=prompt('ملاحظة أو رقم مرجعي (اختياري):','');if(note===null)return;
+    const {error}=await sb.rpc('admin_record_doctor_subscription_payment',{p_doctor_id:d.doctor_id,p_amount:Number(amount),p_months:Number(months),p_method:method.trim(),p_reference_note:note.trim()||null});
+    if(error){toast('تعذر تسجيل الدفعة: '+error.message);return;}
+    toast('تم تسجيل الدفعة وتجديد الاشتراك.');await loadDoctorSubscriptionAdmin();
+   };
+   card.append(pay);
+   const free=document.createElement('button');free.className='sm';free.textContent='منح شهر مجاني';
+   free.onclick=async()=>{
+    if(!confirm('منح الطبيب شهرًا مجانيًا لاستقبال الحجوزات؟'))return;
+    const end=new Date(Date.now()+30*24*60*60*1000).toISOString();
+    const {error}=await sb.rpc('admin_set_doctor_subscription_status',{p_doctor_id:d.doctor_id,p_status:'active',p_ends_at:end,p_admin_note:'فترة مجانية من الإدارة'});
+    if(error){toast('تعذر منح الفترة المجانية: '+error.message);return;}
+    toast('تم منح شهر مجاني.');await loadDoctorSubscriptionAdmin();
+   };
+   card.append(free);
+   if(d.subscription_status==='active'){
+    const pause=document.createElement('button');pause.className='sm';pause.textContent='إيقاف الاشتراك';
+    pause.onclick=async()=>{
+     if(!confirm('إيقاف اشتراك الطبيب؟'))return;
+     const {error}=await sb.rpc('admin_set_doctor_subscription_status',{p_doctor_id:d.doctor_id,p_status:'suspended',p_ends_at:null,p_admin_note:'تم الإيقاف بواسطة الإدارة'});
+     if(error){toast('تعذر إيقاف الاشتراك: '+error.message);return;}
+     toast('تم إيقاف الاشتراك.');await loadDoctorSubscriptionAdmin();
+    };
+    card.append(pause);
+   }
   }
   box.append(card);
  });
