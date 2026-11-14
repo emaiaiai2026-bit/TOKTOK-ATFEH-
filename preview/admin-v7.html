@@ -134,7 +134,7 @@
 
 <!-- اللوحة -->
 <div id="app" class="hidden">
-  <header><b>خدماتنا • الإدارة</b><div style="display:flex;align-items:center;gap:8px"><button id="logoutBtn">قفل اللوحة</button></div></header>
+  <header><b>خدماتنا • الإدارة</b><div style="display:flex;align-items:center;gap:8px"><button id="adminPushBtn" type="button" title="تفعيل إشعارات الإدارة">تفعيل التنبيهات</button><button id="logoutBtn">قفل اللوحة</button></div></header>
   <main>
     <section class="pane" id="paneMap">
       <div id="map"></div>
@@ -233,6 +233,68 @@ let map = null, markers = [], drivers = [], firstFit = true, timer = null, setti
 function toast(t){  const el = $('toast'); el.textContent = t; el.classList.remove('hidden');
   clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.add('hidden'), 3000);
 }
+
+/* ---------- إشعارات الإدارة على الجهاز حتى عند إغلاق اللوحة ---------- */
+const ADMIN_VAPID_PUBLIC_KEY = 'BJ77YksHejiOMhILBjthpjNFfbaVos4jqYrNw31Sks-SKwa1Qfe6jkIYmXZ-zwzufHba_rZ7D6Qw2qYg8SvY288';
+function adminB64ToU8(value){
+  const pad = '='.repeat((4 - value.length % 4) % 4);
+  const raw = atob((value + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from(raw, ch => ch.charCodeAt(0));
+}
+async function setupAdminPush(){
+  const btn = $('adminPushBtn');
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    toast('الجهاز أو المتصفح لا يدعم الإشعارات الفورية'); return;
+  }
+  if (Notification.permission === 'denied') {
+    toast('إذن الإشعارات مرفوض. فعّله من إعدادات الموقع في المتصفح.'); return;
+  }
+  btn.disabled = true;
+  const oldText = btn.textContent;
+  btn.textContent = 'جاري التفعيل...';
+  try {
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') throw new Error('لم يتم السماح بالإشعارات');
+    }
+    const registration = await navigator.serviceWorker.register('./sw.js');
+    await navigator.serviceWorker.ready;
+    let subscription = await registration.pushManager.getSubscription();
+    if (subscription) {
+      const currentKey = subscription.options && subscription.options.applicationServerKey
+        ? new Uint8Array(subscription.options.applicationServerKey) : null;
+      const wantedKey = adminB64ToU8(ADMIN_VAPID_PUBLIC_KEY);
+      const sameKey = currentKey && currentKey.length === wantedKey.length &&
+        currentKey.every((v, i) => v === wantedKey[i]);
+      if (!sameKey) { await subscription.unsubscribe(); subscription = null; }
+    }
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: adminB64ToU8(ADMIN_VAPID_PUBLIC_KEY)
+      });
+    }
+    const json = subscription.toJSON();
+    if (!json.endpoint || !json.keys || !json.keys.p256dh || !json.keys.auth) {
+      throw new Error('بيانات اشتراك الإشعارات غير مكتملة');
+    }
+    const { error } = await sb.rpc('save_push_subscription', {
+      p_endpoint: json.endpoint,
+      p_p256dh: json.keys.p256dh,
+      p_auth: json.keys.auth,
+      p_page_url: location.origin + location.pathname
+    });
+    if (error) throw error;
+    btn.textContent = 'التنبيهات مفعّلة';
+    toast('تم تفعيل إشعارات الإدارة على هذا الجهاز');
+  } catch (error) {
+    btn.textContent = oldText;
+    toast('تعذر تفعيل الإشعارات: ' + (error.message || 'خطأ غير معروف'));
+  } finally {
+    btn.disabled = false;
+  }
+}
+$('adminPushBtn').addEventListener('click', setupAdminPush);
 
 function normalizePhone(raw){
   let p = String(raw || '').replace(/\D/g, '');
@@ -379,6 +441,8 @@ async function start(){
   loadSettings();
   loadVehicleTypes();
   refresh();
+  const requestedTab = new URLSearchParams(location.search).get('tab');
+  if (['map','drivers','rides','customers','doctors','settings'].includes(requestedTab)) showTab(requestedTab);
   clearInterval(timer); timer = setInterval(refresh, 10000);
 }
 
