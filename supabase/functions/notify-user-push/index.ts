@@ -17,9 +17,7 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const secretKeysRaw = Deno.env.get("SUPABASE_SECRET_KEYS");
-  let serviceKey = "";
-  try { serviceKey = secretKeysRaw ? JSON.parse(secretKeysRaw).default || "" : ""; } catch { serviceKey = ""; }
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const vapidPublic = Deno.env.get("VAPID_PUBLIC_KEY");
   const vapidPrivate = Deno.env.get("VAPID_PRIVATE_KEY");
   const vapidSubject = Deno.env.get("VAPID_SUBJECT") || "mailto:admin@khadamatna.app";
@@ -33,11 +31,12 @@ Deno.serve(async (request) => {
   const userId = row?.user_id;
   if (!userId || !row?.id) return json({ skipped: true, reason: "notification_record_missing" });
 
-  const apiHeaders = { apikey: serviceKey, "Content-Type": "application/json" };
-  const query = new URLSearchParams({ select: "id,endpoint,p256dh,auth_key", user_id: `eq.${userId}` });
-  const lookup = await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?${query.toString()}`, { headers: apiHeaders });
-  if (!lookup.ok) return json({ error: "subscription_lookup_failed", detail: await lookup.text() }, 500);
-  const subscriptions = await lookup.json();
+  const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data: subscriptions, error } = await client
+    .from("push_subscriptions")
+    .select("id,endpoint,p256dh,auth_key")
+    .eq("user_id", userId);
+  if (error) return json({ error: "subscription_lookup_failed", detail: error.message }, 500);
   if (!subscriptions?.length) return json({ sent: 0, reason: "no_subscriptions" });
 
   webpush.setVapidDetails(vapidSubject, vapidPublic, vapidPrivate);
@@ -59,10 +58,7 @@ Deno.serve(async (request) => {
       sent++;
     } catch (err: any) {
       if (err?.statusCode === 404 || err?.statusCode === 410) {
-        const deleteQuery = new URLSearchParams({ id: `eq.${sub.id}` });
-        await fetch(`${supabaseUrl}/rest/v1/push_subscriptions?${deleteQuery.toString()}`, {
-          method: "DELETE", headers: apiHeaders,
-        });
+        await client.from("push_subscriptions").delete().eq("id", sub.id);
         expired++;
       } else {
         failed++;
