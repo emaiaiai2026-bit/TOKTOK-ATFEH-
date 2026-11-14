@@ -1,27 +1,42 @@
-/* توكتوك - عامل الإشعارات (Service Worker) */
+/* عامل إشعارات خدماتنا: الرحلات وطلبات الإدارة */
 self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
-self.addEventListener('push', e => {
-  let d = {};
-  try { d = e.data.json(); } catch (_) {}
-  e.waitUntil(self.registration.showNotification(d.title || 'توكتوك', {
-    body: d.body || '',
-    tag: 'new-ride',
+self.addEventListener('push', event => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) {}
+  const target = data.url || data.target_url || './';
+  event.waitUntil(self.registration.showNotification(data.title || 'خدماتنا', {
+    body: data.body || '',
+    tag: data.tag || data.event_type || 'khadamatna-notification',
     renotify: true,
     requireInteraction: true,
-    vibrate: [300, 100, 300, 100, 300],
+    vibrate: [300, 100, 300],
     lang: 'ar',
     dir: 'rtl',
-    data: { url: d.url || './' }
+    data: { url: target }
   }));
 });
 
-self.addEventListener('notificationclick', e => {
-  e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || './';
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-    for (const c of list) { if ('focus' in c) return c.focus(); }
-    return self.clients.openWindow(url);
-  }));
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const rawUrl = event.notification.data && event.notification.data.url || './';
+  let target;
+  try {
+    target = new URL(rawUrl, self.location.origin);
+    if (target.origin !== self.location.origin) target = new URL('./', self.location.origin);
+  } catch (_) {
+    target = new URL('./', self.location.origin);
+  }
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of windows) {
+      if (!('focus' in client)) continue;
+      if ('navigate' in client) {
+        try { await client.navigate(target.href); } catch (_) {}
+      }
+      return client.focus();
+    }
+    return self.clients.openWindow(target.href);
+  })());
 });
