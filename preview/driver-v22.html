@@ -266,10 +266,10 @@ let approved = false, blocked = false, canWork = true;
 function normalizePhone(value){
   let phone = String(value || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d))
     .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
-    .replace(/\\D/g, '');
+    .replace(/\D/g, '');
   if (phone.startsWith('0020')) phone = phone.slice(4);
   else if (phone.startsWith('20') && phone.length === 12) phone = phone.slice(2);
-  return /^01[0125]\\d{8}$/.test(phone) ? phone : '';
+  return /^01[0125]\d{8}$/.test(phone) ? phone : '';
 }
 
 function toast(text){
