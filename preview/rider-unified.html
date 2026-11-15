@@ -343,17 +343,8 @@ async function start(){
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
   me = user;
-  const { data: prof, error: profileError } = await sb.from('profiles').select('role,is_driver').eq('id', me.id).maybeSingle();
-  if (profileError || !prof) {
-    await sb.auth.signOut();
-    location.replace('./');
-    return;
-  }
-  if (prof.role === 'admin' || (prof.role !== 'customer' && prof.role !== 'driver')) {
-    await sb.auth.signOut();
-    location.replace('./');
-    return;
-  }
+  // الحساب الموحد: أي مستخدم مسجل دخوله يقدر يفتح خدمة طلب الرحلة.
+  // لا نرفض الدخول بسبب قيمة role أو غياب صف profiles؛ صلاحيات قاعدة البيانات تظل هي الحاكمة.
   $('appScreen').classList.remove('hidden');
   initMap();
   updateFollowBtn();
