@@ -85,6 +85,7 @@ window.__loadExternalScripts = function (groups) {
   .mbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
   .topbar{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;z-index:1100;display:flex;justify-content:space-between;align-items:center;pointer-events:none}
   .brandpill{pointer-events:auto;background:#fff;border-radius:22px;padding:6px 18px;font-weight:800;font-size:16px;color:var(--navy);border:1px solid var(--line);border-bottom:3px solid var(--acc)}
+  .top-actions{display:flex;gap:8px;align-items:center}
   .logout{pointer-events:auto;background:#fff;color:var(--navy);border-radius:22px;padding:8px 16px;font-size:14px;font-weight:600;border:1px solid var(--line)}
   #sheet{position:absolute;left:0;right:0;bottom:0;z-index:1100;background:#fff;border-radius:24px 24px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom));max-height:70vh;overflow:auto;border-top:1px solid var(--line)}
   .dues{display:flex;justify-content:space-between;align-items:center;background:var(--tint);border-radius:12px;padding:8px 12px;margin-bottom:12px;font-size:14px}
@@ -165,7 +166,10 @@ window.__loadExternalScripts = function (groups) {
   <div id="map"></div>
   <div class="topbar">
     <div class="brandpill" id="brandPill">سواق</div>
-    <button class="logout" id="logoutBtn">خروج</button>
+    <div class="top-actions">
+      <button class="logout" id="backBtn" type="button">رجوع</button>
+      <button class="logout" id="logoutBtn">خروج</button>
+    </div>
   </div>
 
   <div class="mapbtns">
@@ -319,6 +323,8 @@ $('activationBtn').onclick = async () => {
   await start();
 };
 
+$('backBtn').onclick = () => { location.href = './'; };
+
 $('logoutBtn').onclick = async () => {
   if (online && !currentRideId) await setOnline(false);
   await sb.auth.signOut(); location.reload();
@@ -443,7 +449,10 @@ async function keepAwake(){
   } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { if (online) keepAwake(); poll(); }
+  if (document.visibilityState === 'visible') {
+    if (online) { keepAwake(); startTracking(); sendLocation(); }
+    poll();
+  }
 });
 
 async function setOnline(on, auto){
@@ -720,14 +729,7 @@ async function loadSupport(){
 async function checkApproval(){
   const { data, error } = await sb.from('profiles')
     .select('is_approved,is_blocked').eq('id', me.id).maybeSingle();
-  if (error || !data) {
-    approved = false;
-    if (online && !currentRideId) {
-      online = false; stopTracking(); clearReqMarkers();
-      try { localStorage.setItem('tt_online', '0'); } catch (e) {}
-    }
-    return;
-  }
+  if (error || !data) return;
   blocked = !!data.is_blocked;
   approved = !!data.is_approved && !blocked;
   if ((!approved || blocked) && online && !currentRideId) {
