@@ -274,17 +274,30 @@ async function setupAdminPush(){
         applicationServerKey: adminB64ToU8(ADMIN_VAPID_PUBLIC_KEY)
       });
     }
-    const json = subscription.toJSON();
-    if (!json.endpoint || !json.keys || !json.keys.p256dh || !json.keys.auth) {
-      throw new Error('بيانات اشتراك الإشعارات غير مكتملة');
+    const saveSubscription = async (currentSubscription) => {
+      const json = currentSubscription.toJSON();
+      if (!json.endpoint || !json.keys || !json.keys.p256dh || !json.keys.auth) {
+        throw new Error('بيانات اشتراك الإشعارات غير مكتملة');
+      }
+      return await sb.rpc('save_push_subscription', {
+        p_endpoint: json.endpoint,
+        p_p256dh: json.keys.p256dh,
+        p_auth: json.keys.auth,
+        p_page_url: location.origin + location.pathname
+      });
+    };
+    let saved = await saveSubscription(subscription);
+    // A browser may retain a push endpoint previously registered by another signed-in account.
+    // Recreate only this browser's subscription, then retry once; never change database ownership.
+    if (saved.error && String(saved.error.message || '').includes('subscription belongs to another user')) {
+      await subscription.unsubscribe();
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: adminB64ToU8(ADMIN_VAPID_PUBLIC_KEY)
+      });
+      saved = await saveSubscription(subscription);
     }
-    const { error } = await sb.rpc('save_push_subscription', {
-      p_endpoint: json.endpoint,
-      p_p256dh: json.keys.p256dh,
-      p_auth: json.keys.auth,
-      p_page_url: location.origin + location.pathname
-    });
-    if (error) throw error;
+    if (saved.error) throw saved.error;
     btn.textContent = 'التنبيهات مفعّلة';
     toast('تم تفعيل إشعارات الإدارة على هذا الجهاز');
   } catch (error) {
