@@ -1,4 +1,4 @@
-/* عامل إشعارات خدماتنا: الرحلات وطلبات الإدارة */
+/* عامل إشعارات خدماتنا: الرحلات والخدمات الطبية وطلبات الإدارة */
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 
@@ -12,6 +12,7 @@ self.addEventListener('push', event => {
     renotify: true,
     requireInteraction: true,
     vibrate: [300, 100, 300],
+    icon: 'logo-192.png',
     lang: 'ar',
     dir: 'rtl',
     data: { url: target }
