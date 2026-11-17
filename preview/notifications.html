@@ -1,44 +1,411 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0B1F4B"><title>الإشعارات | خدماتنا</title>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<title>مركز الإشعارات | خدماتنا</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Reem+Kufi:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--navy:#0B1F4B;--blue:#1A56DB;--bg:#EAF1FF;--line:#DCE3F0;--muted:#64748b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--navy);font-family:Cairo,system-ui,sans-serif}
-header{background:var(--navy);color:#fff;padding:18px}header a{color:#dbeafe;text-decoration:none}h1{font-size:23px;margin:12px 0 4px}header p{margin:0;color:#c6d4f0;font-size:13px}
-main{max-width:720px;margin:14px auto;padding:0 12px}.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.bar span{font-size:13px;color:var(--muted)}
-button{font:inherit;border:0;border-radius:10px;padding:9px 12px;font-weight:700;cursor:pointer}.action{background:var(--blue);color:white}.action:disabled{opacity:.5}
-.item{background:white;border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:10px}.item.unread{border-right:4px solid var(--blue);background:#fafdff}.item h2{font-size:16px;margin:0 0 5px}.item p{font-size:14px;margin:0 0 9px;line-height:1.7}.meta{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:8px}.empty{background:white;border-radius:15px;padding:24px;text-align:center;color:var(--muted)}#msg{padding:12px;color:#9f1d16;font-size:13px}
-</style></head>
+:root{
+  --navy:#0B1F4B; --navy-2:#14306B; --navy-3:#07163A; --navy-edge:#050F2B;
+  --gold:#FFB400; --gold-hi:#FFD66B; --gold-lo:#E69A00; --gold-edge:#B87400; --gold-ink:#2B1D00;
+  --pearl:#EEF2FA; --line:#DCE3F0; --muted:#5B6B8C; --danger:#B42318; --ok:#1F7A4D;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;min-height:100dvh;background:var(--pearl);color:var(--navy);font-family:Cairo,system-ui,sans-serif;padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+[hidden]{display:none!important}
+:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+/* ===== الأزرار المجسّمة ===== */
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 20px;border:0;border-radius:15px;font:inherit;font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;transition:transform .08s ease,box-shadow .08s ease,filter .15s ease;user-select:none;-webkit-user-select:none}
+.btn svg{width:18px;height:18px;flex:none}
+.btn-sm{min-height:42px;padding:0 15px;font-size:14px;border-radius:14px}
+.btn-gold{color:var(--gold-ink);background:linear-gradient(180deg,var(--gold-hi) 0%,var(--gold) 52%,var(--gold-lo) 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(120,70,0,.18),0 5px 0 var(--gold-edge),0 12px 20px rgba(184,116,0,.32)}
+.btn-gold:active{transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(120,70,0,.18),0 1px 0 var(--gold-edge),0 4px 8px rgba(184,116,0,.28)}
+.btn-gold:disabled{cursor:default;transform:none;filter:saturate(.3) brightness(1.08);opacity:.7;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 4px 0 #A99B78}
+.hero .btn-gold:disabled{color:rgba(255,255,255,.6);filter:none;opacity:1;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 3px 0 rgba(3,10,32,.45)}
+.btn-glass{color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 4px 0 rgba(3,10,32,.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.btn-glass:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.32),0 1px 0 rgba(3,10,32,.5)}
+.btn-navy{color:#FFC83D;background:linear-gradient(180deg,#1E4190 0%,var(--navy) 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.28),0 5px 0 var(--navy-edge),0 12px 20px rgba(5,15,43,.3)}
+.btn-navy:active{transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.28),0 1px 0 var(--navy-edge),0 4px 8px rgba(5,15,43,.28)}
+.btn-soft{color:var(--navy);background:#fff;box-shadow:inset 0 1.5px 0 #fff,0 4px 0 #C5D0E8,0 8px 14px rgba(11,31,75,.1)}
+.btn-soft:active{transform:translateY(3px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8}
+
+/* ===== الرأس ===== */
+.hero{position:relative;color:#fff;padding:calc(16px + env(safe-area-inset-top,0px)) 18px 30px;border-radius:0 0 30px 30px;
+  background:
+    radial-gradient(120% 90% at 88% -12%,rgba(255,180,0,.30),transparent 56%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23FFB400' stroke-opacity='.15' stroke-width='1'%3E%3Crect x='14' y='14' width='28' height='28'/%3E%3Crect x='14' y='14' width='28' height='28' transform='rotate(45 28 28)'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E"),
+    linear-gradient(165deg,#12306F 0%,var(--navy) 55%,var(--navy-3) 100%);
+  box-shadow:0 14px 28px -12px rgba(5,15,43,.55)}
+.hero::after{content:"";position:absolute;left:24px;right:24px;bottom:0;height:4px;border-radius:4px 4px 0 0;background:linear-gradient(90deg,transparent,var(--gold) 20%,var(--gold-hi) 50%,var(--gold) 80%,transparent)}
+.hero-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:22px}
+.hero h1{margin:0;font-family:'Reem Kufi',Cairo,system-ui,sans-serif;font-weight:700;font-size:34px;line-height:1.25;letter-spacing:0;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.hero p{margin:6px 0 0;font-size:14px;font-weight:600;color:#D6E0F7}
+
+/* ===== المحتوى ===== */
+main{max-width:720px;margin:0 auto;padding:0 14px}
+.msg{min-height:0;margin:0 0 10px;padding:0;font-size:13.5px;font-weight:600;color:var(--danger)}
+.msg:not(:empty){padding:11px 14px;border-radius:14px;background:#fff;border:1px solid #F0C9C5}
+.msg.ok{color:var(--ok);border-color:#BFE3CF}
+
+/* بطاقة إشعارات الجهاز */
+.push{display:flex;align-items:center;gap:13px;margin:20px 0 4px;padding:14px;border-radius:20px;background:#fff;border:1px solid var(--line);box-shadow:0 10px 22px -10px rgba(11,31,75,.25)}
+.push.on{background:#FFF8E6;border-color:#F1D98C}
+.push-ico{flex:none;width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center;color:#FFC83D;background:linear-gradient(180deg,#1E4190,var(--navy) 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.25),0 4px 0 var(--navy-edge)}
+.push-ico svg{width:23px;height:23px}
+.push-txt{flex:1;min-width:0}
+.push-txt b{display:block;font-size:15px;font-weight:800;line-height:1.5}
+.push-txt span{display:block;font-size:13px;font-weight:500;color:var(--muted);line-height:1.6}
+.push .btn{flex:none;margin-bottom:5px}
+
+/* التبويبات */
+.tabs{position:sticky;top:0;z-index:5;display:flex;gap:10px;overflow-x:auto;padding:14px 2px 16px;margin:0 -2px;scrollbar-width:none;background:linear-gradient(180deg,var(--pearl) 76%,rgba(238,242,250,0))}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 17px;border:0;border-radius:14px;font:inherit;font-weight:700;font-size:14px;color:var(--navy);background:#fff;cursor:pointer;box-shadow:inset 0 1.5px 0 #fff,0 3px 0 #C5D0E8,0 7px 12px rgba(11,31,75,.08);transition:transform .08s ease,box-shadow .08s ease}
+.tab:active{transform:translateY(2px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8}
+.tab.on{color:#FFC83D;background:linear-gradient(180deg,#1E4190,var(--navy) 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 3px 0 var(--navy-edge),0 8px 14px rgba(5,15,43,.28)}
+.tab-u{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gold);color:var(--gold-ink);font-size:11.5px;font-weight:800;line-height:22px;text-align:center}
+
+/* بطاقة الإشعار: الجديد مرفوع بحافة ذهبية، والمقروء مسطّح */
+.list{padding-top:4px}
+.item{position:relative;display:flex;gap:13px;align-items:flex-start;margin-bottom:13px;padding:14px 14px 13px;border-radius:20px;cursor:pointer;transition:transform .12s ease}
+.item:active{transform:scale(.985)}
+.item.unread{background:#fff;border:1px solid #EADFC0;border-inline-start:6px solid var(--gold);box-shadow:inset 0 1px 0 #fff,0 12px 24px -10px rgba(11,31,75,.32),0 2px 0 rgba(11,31,75,.05)}
+.item:not(.unread){background:rgba(255,255,255,.55);border:1px solid rgba(11,31,75,.07);box-shadow:inset 0 2px 6px rgba(11,31,75,.06)}
+.item-ico{flex:none;width:46px;height:46px;border-radius:15px;display:flex;align-items:center;justify-content:center}
+.item-ico svg{width:23px;height:23px}
+.item.unread .item-ico{color:#FFC83D;background:linear-gradient(180deg,#1E4190,var(--navy) 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.25),0 4px 0 var(--navy-edge)}
+.item:not(.unread) .item-ico{color:#7A89AB;background:#E4EAF6}
+.item-main{flex:1;min-width:0}
+.item-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.item-title{margin:0;font-size:16px;font-weight:800;line-height:1.5}
+.item:not(.unread) .item-title{font-weight:700;color:#33456E}
+.item-time{flex:none;font-size:12px;font-weight:600;color:var(--muted)}
+.item-body{margin:3px 0 0;font-size:14px;font-weight:500;line-height:1.8;color:#3A4A70}
+.item-foot{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pill{padding:3px 11px;border-radius:999px;background:#EEF2FA;color:#3A4A70;font-size:11.5px;font-weight:700}
+.pill-new{color:var(--gold-ink);background:linear-gradient(180deg,var(--gold-hi),var(--gold));box-shadow:0 2px 0 var(--gold-edge)}
+
+/* هيكل التحميل والحالات الفارغة */
+.sk{height:96px;margin-bottom:13px;border-radius:20px;background:linear-gradient(100deg,#E3E9F5 30%,#F3F6FC 50%,#E3E9F5 70%);background-size:200% 100%}
+.empty{margin-top:26px;padding:34px 22px;text-align:center;border-radius:24px;background:#fff;border:1px solid var(--line);box-shadow:0 12px 24px -12px rgba(11,31,75,.25)}
+.empty-ring{width:84px;height:84px;margin:0 auto 16px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#FFC83D;background:radial-gradient(circle at 35% 30%,#2A57B5,var(--navy) 70%);box-shadow:0 0 0 7px #FFF3CC,0 0 0 9px var(--gold),0 12px 20px rgba(5,15,43,.3)}
+.empty-ring svg{width:38px;height:38px}
+.empty b{display:block;font-size:18px;font-weight:800}
+.empty span{display:block;margin-top:6px;font-size:14px;font-weight:500;color:var(--muted);line-height:1.8}
+.empty .btn{margin-top:18px}
+
+/* حركة واحدة عند أول تحميل فقط */
+@media (prefers-reduced-motion:no-preference){
+  .sk{animation:shimmer 1.4s linear infinite}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  .list.enter .item{animation:rise .5s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i,0) * 55ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+}
+@media (prefers-reduced-motion:reduce){.btn,.tab,.item{transition:none}}
+@media (min-width:560px){.hero{padding-left:max(18px,calc((100% - 720px)/2 + 18px));padding-right:max(18px,calc((100% - 720px)/2 + 18px))}}
+</style>
+</head>
 <body>
-<header><a href="./index.html">← الرجوع للخدمات</a><h1>مركز الإشعارات</h1><p>كل تحديثات حسابك وخدماتك في مكان واحد.</p></header>
-<main><div class="bar"><span id="count">جاري تحميل الإشعارات...</span><button id="readAll" class="action" disabled>تحديد الكل كمقروء</button></div><div id="list"></div><div id="msg" role="status"></div></main>
+
+<header class="hero">
+  <div class="hero-bar">
+    <a class="btn btn-glass btn-sm" href="./">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      رجوع للخدمات
+    </a>
+    <button id="readAll" class="btn btn-gold btn-sm" type="button" disabled>تحديد الكل كمقروء</button>
+  </div>
+  <h1>مركز الإشعارات</h1>
+  <p id="count" role="status">جاري تحميل الإشعارات...</p>
+</header>
+
+<main>
+  <section id="push" class="push" hidden></section>
+  <nav id="tabs" class="tabs" role="tablist" aria-label="تصفية الإشعارات حسب الخدمة" hidden></nav>
+  <p id="msg" class="msg" role="status" aria-live="polite"></p>
+  <div id="list" class="list" aria-busy="true">
+    <div class="sk"></div><div class="sk"></div><div class="sk"></div>
+  </div>
+</main>
+
+<script src="notification-bell.js" data-no-bell data-no-toast></script>
 <script>
-(function(){var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=init;s.onerror=function(){s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=init;document.head.appendChild(s)};document.head.appendChild(s)})();
-async function init(){
-const sb=window.supabase.createClient('https://nhxenquczoaxytxskdsa.supabase.co','sb_publishable_kQuBBDlxf1Z-6PSwbNBgCw_4F_pRUaT');
-const $=id=>document.getElementById(id);let rows=[];
-const {data:{user},error:authError}=await sb.auth.getUser();
-if(authError||!user){location.replace('./index.html');return}
-function esc(v){return String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function ago(v){const d=Math.max(0,Date.now()-new Date(v).getTime()),m=Math.floor(d/60000);if(m<1)return 'الآن';if(m<60)return 'منذ '+m+' دقيقة';const h=Math.floor(m/60);if(h<24)return 'منذ '+h+' ساعة';return new Date(v).toLocaleDateString('ar-EG')}
-async function load(){
-$('msg').textContent='';
-const {data,error}=await sb.from('notifications').select('id,event_type,title,body,target_url,created_at,read_at').eq('user_id',user.id).order('created_at',{ascending:false}).limit(100);
-if(error){$('list').innerHTML='<div class="empty">تعذر تحميل الإشعارات: '+esc(error.message)+'</div>';return}
-rows=data||[];const unread=rows.filter(x=>!x.read_at).length;
-$('count').textContent=rows.length+' إشعار • '+unread+' غير مقروء';
-$('readAll').disabled=!unread;
-if(!rows.length){$('list').innerHTML='<div class="empty">مفيش إشعارات لحد دلوقتي. أي تحديث جديد هيظهر هنا.</div>';return}
-$('list').innerHTML='';
-rows.forEach(n=>{const el=document.createElement('article');el.className='item'+(!n.read_at?' unread':'');el.innerHTML='<h2>'+esc(n.title)+'</h2><p>'+esc(n.body)+'</p><div class="meta"><span>'+ago(n.created_at)+'</span><span>'+(n.read_at?'مقروء':'جديد')+'</span></div>';
-el.addEventListener('click',async()=>{if(!n.read_at){const {error}=await sb.rpc('mark_notification_read',{p_notification_id:n.id});if(error){$('msg').textContent='تعذر تحديث حالة الإشعار: '+error.message;return}n.read_at=new Date().toISOString();}if(n.target_url&&n.target_url!=='./')location.href=n.target_url;else load()});
-$('list').appendChild(el)});
-}
-$('readAll').onclick=async()=>{$('readAll').disabled=true;const {error}=await sb.rpc('mark_all_notifications_read');if(error){$('msg').textContent='تعذر تحديد الإشعارات كمقروءة: '+error.message;$('readAll').disabled=false;return}await load()};
-await load();setInterval(load,30000);
-}
+(async function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var K = window.KhadamatnaNotify;
+  if (!K) {
+    $('list').textContent = '';
+    $('msg').textContent = 'تعذر تحميل مركز الإشعارات. تأكد من الإنترنت وحدّث الصفحة.';
+    $('count').textContent = '';
+    return;
+  }
+
+  var ICONS = {
+    rides: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15l1.5-5a2 2 0 0 1 1.9-1.4h9.2a2 2 0 0 1 1.9 1.4L20 15"/><rect x="3" y="15" width="18" height="4" rx="1.5"/><circle cx="7.5" cy="19" r="1.6"/><circle cx="16.5" cy="19" r="1.6"/></svg>',
+    medical: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5"/><path d="M12 8v8M8 12h8"/></svg>',
+    drivers: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2"/><path d="M12 14v6M4.5 10.5l5.5 1M19.5 10.5l-5.5 1"/></svg>',
+    restaurants: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 3c-2 1.5-3 4-3 7h3v11"/></svg>',
+    grocery: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.5 9a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 9z"/><path d="M8 9l3-5M16 9l-3-5"/></svg>',
+    general: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+  };
+  ICONS.system = ICONS.general;
+
+  var CATS = [
+    ['rides', 'الرحلات'], ['medical', 'الخدمات الطبية'], ['drivers', 'السائقون'],
+    ['restaurants', 'المطاعم'], ['grocery', 'البقالة'], ['system', 'النظام'], ['general', 'عام']
+  ];
+  var LABEL = {};
+  CATS.forEach(function (c) { LABEL[c[0]] = c[1]; });
+
+  var rows = [];
+  var active = 'all';
+  var firstRender = true;
+
+  var sb = await K.client();
+  var sess = await sb.auth.getSession();
+  if (!sess.data || !sess.data.session) { location.replace('./'); return; }
+  var user = sess.data.session.user;
+  sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.replace('./'); });
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function fmt(n) { return Number(n).toLocaleString('ar-EG'); }
+  function say(text, ok) {
+    var m = $('msg');
+    m.textContent = text || '';
+    m.classList.toggle('ok', !!ok);
+  }
+  function ago(v) {
+    var d = Math.max(0, Date.now() - new Date(v).getTime());
+    var m = Math.floor(d / 60000);
+    if (m < 1) return 'الآن';
+    if (m < 60) return 'منذ ' + fmt(m) + ' دقيقة';
+    var h = Math.floor(m / 60);
+    if (h < 24) return 'منذ ' + fmt(h) + ' ساعة';
+    return new Date(v).toLocaleDateString('ar-EG');
+  }
+
+  /* ---------- التبويبات ---------- */
+  function renderTabs() {
+    var box = $('tabs');
+    box.textContent = '';
+    var present = {};
+    var totalUnread = 0;
+    rows.forEach(function (r) {
+      var c = r.category || 'general';
+      present[c] = present[c] || { n: 0, u: 0 };
+      present[c].n++;
+      if (!r.read_at) { present[c].u++; totalUnread++; }
+    });
+    var order = ['all'];
+    CATS.forEach(function (c) { if (present[c[0]]) order.push(c[0]); });
+    Object.keys(present).forEach(function (k) { if (order.indexOf(k) < 0) order.push(k); });
+    if (order.indexOf(active) < 0) active = 'all';
+    order.forEach(function (k) {
+      var b = el('button', 'tab' + (k === active ? ' on' : ''));
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', k === active ? 'true' : 'false');
+      b.appendChild(el('span', '', k === 'all' ? 'الكل' : (LABEL[k] || 'عام')));
+      var u = k === 'all' ? totalUnread : present[k].u;
+      if (u) b.appendChild(el('span', 'tab-u', fmt(u)));
+      b.addEventListener('click', function () { active = k; render(); });
+      box.appendChild(b);
+    });
+    box.hidden = order.length <= 2;
+  }
+
+  /* ---------- البطاقات ---------- */
+  function card(n, i) {
+    var unread = !n.read_at;
+    var a = el('article', 'item' + (unread ? ' unread' : ''));
+    a.tabIndex = 0;
+    a.setAttribute('role', 'button');
+    a.style.setProperty('--i', Math.min(i, 8));
+    var ic = el('div', 'item-ico');
+    ic.innerHTML = ICONS[n.category] || ICONS.general;
+    var main = el('div', 'item-main');
+    var head = el('div', 'item-head');
+    head.appendChild(el('h2', 'item-title', n.title || 'إشعار'));
+    head.appendChild(el('time', 'item-time', ago(n.created_at)));
+    main.appendChild(head);
+    if (n.body) main.appendChild(el('p', 'item-body', n.body));
+    var foot = el('div', 'item-foot');
+    foot.appendChild(el('span', 'pill', LABEL[n.category] || 'عام'));
+    if (unread) foot.appendChild(el('span', 'pill pill-new', 'جديد'));
+    main.appendChild(foot);
+    a.appendChild(ic);
+    a.appendChild(main);
+    function go() { openItem(n); }
+    a.addEventListener('click', go);
+    a.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
+    });
+    return a;
+  }
+
+  function emptyState() {
+    var box = el('div', 'empty');
+    var ring = el('div', 'empty-ring');
+    ring.innerHTML = ICONS.general;
+    box.appendChild(ring);
+    if (active === 'all') {
+      box.appendChild(el('b', '', 'مفيش إشعارات لحد دلوقتي'));
+      box.appendChild(el('span', '', 'أي تحديث على رحلاتك وخدماتك هيظهر هنا فورًا.'));
+      var a = el('a', 'btn btn-gold', 'ارجع للخدمات');
+      a.href = './';
+      box.appendChild(a);
+    } else {
+      box.appendChild(el('b', '', 'مفيش إشعارات في ' + (LABEL[active] || 'القسم ده')));
+      var b = el('button', 'btn btn-navy', 'اعرض كل الإشعارات');
+      b.type = 'button';
+      b.addEventListener('click', function () { active = 'all'; render(); });
+      box.appendChild(b);
+    }
+    return box;
+  }
+
+  function render() {
+    var total = rows.length;
+    var unread = rows.filter(function (r) { return !r.read_at; }).length;
+    $('count').textContent = total
+      ? (unread ? fmt(unread) + ' جديد من ' + fmt(total) + ' إشعار' : 'كل إشعاراتك مقروءة')
+      : 'لا توجد إشعارات';
+    $('readAll').disabled = !unread;
+    renderTabs();
+    var list = $('list');
+    list.setAttribute('aria-busy', 'false');
+    list.textContent = '';
+    var shown = rows.filter(function (r) { return active === 'all' || (r.category || 'general') === active; });
+    if (!shown.length) { list.appendChild(emptyState()); return; }
+    list.classList.toggle('enter', firstRender);
+    shown.forEach(function (n, i) { list.appendChild(card(n, i)); });
+    firstRender = false;
+  }
+
+  async function openItem(n) {
+    if (!n.read_at) {
+      var r = await sb.rpc('mark_notification_read', { p_notification_id: n.id });
+      if (r.error) { say('تعذر تحديث حالة الإشعار: ' + r.error.message); return; }
+      n.read_at = new Date().toISOString();
+    }
+    if (n.target_url && n.target_url !== './') location.href = K.safeUrl(n.target_url);
+    else render();
+  }
+
+  async function load() {
+    var r = await sb.from('notifications')
+      .select('id,event_type,category,title,body,target_url,created_at,read_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+    if (r.error) {
+      if (firstRender) {
+        var list = $('list');
+        list.textContent = '';
+        var box = el('div', 'empty');
+        box.appendChild(el('b', '', 'تعذر تحميل الإشعارات'));
+        box.appendChild(el('span', '', r.error.message));
+        list.appendChild(box);
+        $('count').textContent = '';
+      }
+      return;
+    }
+    say('');
+    rows = r.data || [];
+    render();
+  }
+
+  $('readAll').addEventListener('click', async function () {
+    $('readAll').disabled = true;
+    var r = await sb.rpc('mark_all_notifications_read');
+    if (r.error) {
+      say('تعذر تحديد الإشعارات كمقروءة: ' + r.error.message);
+      $('readAll').disabled = false;
+      return;
+    }
+    await load();
+  });
+
+  /* ---------- إشعارات الجهاز ---------- */
+  function pushMessage(r) {
+    if (r.reason === 'conflict') return 'الجهاز ده مربوط بحساب تاني. سجّل دخول بالحساب القديم واضغط «خروج» مرة، وبعدها فعّل من هنا.';
+    if (r.reason === 'denied') return 'الإشعارات متقفلة لهذا الموقع. افتح إعدادات الموقع من أيقونة القفل بجوار الرابط وفعّلها.';
+    if (r.reason === 'dismissed') return 'لم يتم السماح بالإشعارات. اضغط «فعّل الإشعارات» ووافق على الطلب.';
+    if (r.reason === 'unsupported') return 'المتصفح ده مش بيدعم الإشعارات. افتح التطبيق من Chrome.';
+    return 'تعذر تفعيل الإشعارات' + (r.message ? ': ' + r.message : '');
+  }
+
+  async function renderPush() {
+    var st = await K.pushStatus();
+    var box = $('push');
+    box.textContent = '';
+    box.hidden = false;
+    box.className = 'push';
+    var ico = el('div', 'push-ico');
+    var txt = el('div', 'push-txt');
+    if (st === 'enabled') {
+      box.classList.add('on');
+      ico.innerHTML = ICONS.check;
+      txt.appendChild(el('b', '', 'الإشعارات مفعّلة على هذا الجهاز'));
+      txt.appendChild(el('span', '', 'هتوصلك التحديثات حتى والتطبيق مقفول.'));
+      var off = el('button', 'btn btn-soft btn-sm', 'إيقاف');
+      off.type = 'button';
+      off.addEventListener('click', async function () {
+        off.disabled = true;
+        await K.disablePush();
+        say('تم إيقاف الإشعارات على هذا الجهاز.', true);
+        renderPush();
+      });
+      box.append(ico, txt, off);
+    } else if (st === 'default' || st === 'needs-subscribe') {
+      ico.innerHTML = ICONS.general;
+      txt.appendChild(el('b', '', 'فعّل إشعارات الجهاز'));
+      txt.appendChild(el('span', '', 'عشان توصلك تحديثات رحلاتك حتى والشاشة مقفولة.'));
+      var on = el('button', 'btn btn-gold btn-sm', 'فعّل الإشعارات');
+      on.type = 'button';
+      on.addEventListener('click', async function () {
+        on.disabled = true;
+        var r = await K.enablePush();
+        if (r.ok) say('تم تفعيل الإشعارات على هذا الجهاز.', true);
+        else say(pushMessage(r));
+        renderPush();
+      });
+      box.append(ico, txt, on);
+    } else if (st === 'denied') {
+      ico.innerHTML = ICONS.general;
+      txt.appendChild(el('b', '', 'الإشعارات متقفلة'));
+      txt.appendChild(el('span', '', 'افتح إعدادات الموقع من أيقونة القفل بجوار الرابط وفعّلها.'));
+      box.append(ico, txt);
+    } else {
+      ico.innerHTML = ICONS.general;
+      txt.appendChild(el('b', '', 'الإشعارات غير مدعومة هنا'));
+      txt.appendChild(el('span', '', 'افتح التطبيق من Chrome على أندرويد.'));
+      box.append(ico, txt);
+    }
+  }
+
+  /* ---------- التشغيل ---------- */
+  await load();
+  renderPush();
+  K.onChange(function () { load(); });
+  setInterval(load, 30000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') { load(); renderPush(); }
+  });
+})();
 </script>
-</body></html>
+</body>
+</html>
