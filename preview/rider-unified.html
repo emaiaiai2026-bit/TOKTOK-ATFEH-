@@ -643,7 +643,23 @@ async function searchDestination(){
     .replace(/[\u200f\u200e]/g, '')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ').trim().toLocaleLowerCase('ar-EG');
-  const key = normalize(query);
+  // مطابقة مرنة: نفس التطبيع + تجاهل «ال» التعريف في أول الكلمة (المدرسة = مدرسة)
+  const stripAl = word => (word.length > 3 && word.startsWith('ال')) ? word.slice(2) : word;
+  const normalizeMatch = value => normalize(value).split(' ').map(stripAl).join(' ');
+  // صيغ كتابة بديلة نجرّبها مع خدمات الخرائط (ة/ه، ى/ي، همزات الألف)
+  const spellingVariants = text => {
+    const base = String(text || '').normalize('NFKC').replace(/[\u064B-\u065F\u0670ـ]/g, '').replace(/\s+/g, ' ').trim();
+    const words = base.split(' ');
+    const set = new Set([base]);
+    set.add(words.map(w => w.replace(/ه$/, 'ة')).join(' '));
+    set.add(words.map(w => w.replace(/ة$/, 'ه')).join(' '));
+    set.add(words.map(w => w.replace(/ي$/, 'ى')).join(' '));
+    set.add(words.map(w => w.replace(/ى$/, 'ي')).join(' '));
+    set.add(base.replace(/[أإآٱ]/g, 'ا'));
+    set.add(words.map(w => w.replace(/^ا(?!ل)/, 'أ')).join(' '));
+    return [...set].filter(Boolean).slice(0, 6);
+  };
+  const key = normalizeMatch(query);
   const wantsMosque = /مسجد|جامع|mosque/i.test(query);
   const btn = $('destinationSearchBtn');
   btn.disabled = true; btn.textContent = 'بحث...';
@@ -665,6 +681,7 @@ async function searchDestination(){
         token &&
         !['مسجد','جامع','mosque','اطفيح','باطفيح','الجيزه','جيزه','مصر'].includes(token)
       );
+      for (let i = 0; i < tokens.length; i++) tokens[i] = stripAl(tokens[i]);
       if (wantsMosque && !tokens.length) throw new Error('اكتب اسم المسجد بعد كلمة مسجد');
       const nameQuery = tokens.join(' ');
       const regex = tokens.map(token => Array.from(token).map(ch => {
@@ -704,7 +721,7 @@ async function searchDestination(){
               const isMosque = !looksLikeStreet && (t.building === 'mosque' || (t.amenity === 'place_of_worship' && (String(t.religion || '').toLowerCase() === 'muslim' || /مسجد|جامع|mosque/i.test(poiName))));
               if (!point || !isMosque) return;
               const names = [t.name,t['name:ar'],t.alt_name,t.official_name,t.loc_name,t.short_name,t['name:en']].filter(Boolean);
-              const searchable = normalize(names.join(' '));
+              const searchable = normalizeMatch(names.join(' '));
               const wanted = tokens.map(normalize).filter(Boolean);
               const matches = wanted.length && wanted.every(token => searchable.includes(token));
               if (!matches) return;
@@ -718,11 +735,48 @@ async function searchDestination(){
         }
       }
 
+      // 1ب) أي مكان تاني (مدرسة، صيدلية، محل، شارع...): نجيب كل الأماكن المسمّاة حوالين الخريطة
+      // ونطابق الاسم محليًا بنفس التطبيع، فاختلاف ة/ه أو الهمزات ما يأثرش.
+      if (!wantsMosque && tokens.length) {
+        const lat = Number(center.lat.toFixed(5)), lon = Number(center.lng.toFixed(5));
+        const around = 'around:7000,' + lat + ',' + lon;
+        const keys = ['amenity', 'shop', 'healthcare', 'office', 'tourism', 'leisure', 'place', 'highway', 'building'];
+        const overpassQuery = '[out:json][timeout:25];(' + keys.map(k => 'nwr(' + around + ')["name"]["' + k + '"];').join('') + ');out center tags;';
+        for (const endpoint of ['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter']) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 20000);
+          try {
+            const response = await fetch(endpoint, {
+              method:'POST',
+              headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
+              body:'data=' + encodeURIComponent(overpassQuery),
+              signal:controller.signal
+            });
+            if (!response.ok) throw new Error('Overpass HTTP ' + response.status);
+            const payload = await response.json();
+            (payload.elements || []).forEach(element => {
+              const t = element.tags || {};
+              const point = element.type === 'node' ? {lat:element.lat,lon:element.lon} : element.center;
+              if (!point) return;
+              const names = [t.name,t['name:ar'],t.alt_name,t.official_name,t.loc_name,t.short_name,t['name:en']].filter(Boolean);
+              if (!names.length) return;
+              const searchable = normalizeMatch(names.join(' '));
+              if (!tokens.every(token => searchable.includes(token))) return;
+              const title = t.name || t['name:ar'] || t.official_name || t.alt_name || query;
+              add({lat:point.lat,lon:point.lon,name:title,
+                display_name:[title,t['addr:street'],t['addr:place'],t['addr:neighbourhood'],t['addr:suburb'],t['addr:city'] || 'أطفيح',t['addr:state'] || 'الجيزة'].filter(Boolean).join('، '),isPoi:false});
+            });
+            break;
+          } catch(error) { console.warn('Overpass (general) endpoint failed:', endpoint, error); }
+          finally { clearTimeout(timer); }
+        }
+      }
+
       // 2) Nominatim fallback and normal place search, with a bounded local search area.
-      if (!candidates.length || wantsMosque) {
+      if (!candidates.length) {
         const queryVariants = wantsMosque
           ? [...new Set([query, nameQuery, nameQuery + ' أطفيح', nameQuery + ' شارع المؤسسة أطفيح', nameQuery + ' الموقف القديم أطفيح'].filter(Boolean))]
-          : [...new Set([query, cleanQuery].filter(Boolean))];
+          : spellingVariants(query);
         for (const searchText of queryVariants) {
           const geocodeWait = Math.max(0, 1100 - (Date.now() - lastGeocodeAt));
           if (geocodeWait) await new Promise(resolve => setTimeout(resolve, geocodeWait));
@@ -758,7 +812,7 @@ async function searchDestination(){
 
       // 3) Photon fallback for ordinary addresses/shops if the primary geocoder is unavailable.
       if (!candidates.length && !wantsMosque) {
-        for (const searchText of [...new Set([query, cleanQuery])]) {
+        for (const searchText of spellingVariants(query).slice(0, 3)) {
           const params = new URLSearchParams({q:searchText,lat:String(center.lat),lon:String(center.lng),limit:'10',lang:'ar'});
           const controller = new AbortController();
           const timer = setTimeout(() => controller.abort(), 10000);
@@ -783,7 +837,7 @@ async function searchDestination(){
     const origin = pickup || center;
     results.sort((a,b)=>{
       const rank = place => {
-        const name = normalize(place.name || '');
+        const name = normalizeMatch(place.name || '');
         const matched = tokens.filter(token => name.includes(token)).length;
         const exact = tokens.length && matched === tokens.length ? 1000 : matched * 100;
         return exact - haversine(origin,L.latLng(Number(place.lat),Number(place.lon)));
