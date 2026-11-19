@@ -14,8 +14,9 @@ label{display:block;font-weight:700;font-size:13px;margin:12px 0 5px}input,selec
 button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px;font-weight:700}.primary{width:100%;background:var(--blue);color:#fff;margin-top:14px}.primary:disabled{opacity:.5}.slotgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}.slot{background:#eef3ff;color:var(--navy);border:1px solid var(--line);padding:9px 4px}.slot.active{background:var(--blue);color:#fff;border-color:var(--blue)}.empty{padding:15px;text-align:center;color:var(--muted);font-size:14px}.booking{border-bottom:1px solid var(--line);padding:11px 0}.booking:last-child{border:0}.status{display:inline-block;border-radius:9px;background:#fff1c2;padding:2px 9px;font-size:12px;font-weight:700}
 #msg{position:fixed;bottom:16px;left:12px;right:12px;max-width:650px;margin:auto;background:var(--navy);color:#fff;padding:12px 15px;border-radius:12px;text-align:center;z-index:5} [hidden]{display:none!important}
 </style>
+<link rel="stylesheet" href="khadamatna-theme.css?v=20261116">
 </head>
-<body>
+<body class="kn-content">
 <header><a href="./index.html">← الرجوع للخدمات</a><h1>حجز عند دكتور</h1><p>اختار الطبيب والموعد المناسب، وتابع حالة حجزك من نفس الحساب.</p></header>
 <main>
 <section class="panel"><h2>الأطباء المتاحون</h2><div id="doctors" class="muted">جاري تحميل الأطباء...</div></section>
@@ -130,4 +131,5 @@ await loadDoctors();await renderBookings();await loadDoctorBookings();
 }
 </script>
 
+<script src="notification-bell.js" defer></script>
 </body></html>

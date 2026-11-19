@@ -7,6 +7,7 @@
      data-no-toast  لا يعرض تنبيه الإشعار الجديد
      data-top="116" بعد الجرس عن أعلى الشاشة بالبكسل (الافتراضي 14)
      data-side="right" يضع الجرس يمين الشاشة (الافتراضي يسار)
+     data-push-prompt يعرض بطاقة اقتراح تفعيل الإشعارات (مرة كل 3 أيام لو الإذن لسه مش متحدد)
    لو الصفحة عندها اتصال Supabase جاهز، تشاركه بكتابة: window.__khadamatnaClient = sb  */
 (function () {
   'use strict';
@@ -20,6 +21,7 @@
   var noToast = !!(script && script.hasAttribute('data-no-toast'));
   var bellTop = parseInt((script && script.getAttribute('data-top')) || '14', 10) || 14;
   var bellSide = (script && script.getAttribute('data-side')) === 'right' ? 'right' : 'left';
+  var pushPromptOn = !!(script && script.hasAttribute('data-push-prompt'));
 
   if (window.KhadamatnaNotify && window.KhadamatnaNotify.__loaded) return;
   var api = window.KhadamatnaNotify = { __loaded: true };
@@ -33,6 +35,9 @@
   var badgeEl = null;
   var toastEl = null;
   var toastTimer = null;
+  var promptEl = null;
+  var promptCheckedFor = null;
+  var BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
 
   /* ---------- اتصال Supabase ---------- */
   function loadClient(done, fail) {
@@ -154,6 +159,65 @@
     emitChange(n);
   }
 
+  function flashToast(text) {
+    if (!toastEl) return;
+    toastEl.querySelector('.kn-t-title').textContent = text;
+    toastEl.querySelector('.kn-t-body').textContent = '';
+    toastEl.onclick = function () { toastEl.classList.remove('show'); };
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 4500);
+  }
+
+  function pushReasonText(r) {
+    if (r.reason === 'conflict') return 'الجهاز ده مربوط بحساب تاني. سجّل دخول بالحساب القديم واضغط «خروج» مرة، وبعدها فعّل الإشعارات.';
+    if (r.reason === 'denied') return 'الإشعارات متقفلة لهذا الموقع. افتح إعدادات الموقع من أيقونة القفل وفعّلها.';
+    if (r.reason === 'dismissed') return 'لم يتم السماح بالإشعارات.';
+    if (r.reason === 'unsupported') return 'المتصفح ده مش بيدعم الإشعارات.';
+    return 'تعذر تفعيل الإشعارات';
+  }
+
+  function showPushPrompt() {
+    if (!promptEl) {
+      promptEl = document.createElement('div');
+      promptEl.id = 'khadamatnaPrompt';
+      promptEl.setAttribute('role', 'dialog');
+      promptEl.setAttribute('aria-label', 'تفعيل الإشعارات');
+      promptEl.innerHTML =
+        '<div class="kn-p-row"><span class="kn-t-ico">' + BELL_SVG + '</span><div>' +
+        '<div class="kn-t-title">فعّل الإشعارات</div>' +
+        '<div class="kn-t-body">عشان توصلك تحديثات رحلاتك وخدماتك حتى والشاشة مقفولة.</div></div></div>' +
+        '<div class="kn-p-btns"><button type="button" class="kn-p-yes">فعّل الإشعارات</button>' +
+        '<button type="button" class="kn-p-no">لاحقًا</button></div>';
+      document.body.appendChild(promptEl);
+      promptEl.querySelector('.kn-p-no').onclick = function () {
+        try { localStorage.setItem('kn_push_later', String(Date.now())); } catch (e) {}
+        promptEl.classList.remove('show');
+      };
+      promptEl.querySelector('.kn-p-yes').onclick = async function () {
+        this.disabled = true;
+        var r = await api.enablePush();
+        promptEl.classList.remove('show');
+        flashToast(r.ok ? 'تم تفعيل الإشعارات على هذا الجهاز' : pushReasonText(r));
+        this.disabled = false;
+      };
+    }
+    requestAnimationFrame(function () { promptEl.classList.add('show'); });
+  }
+
+  async function maybePushPrompt() {
+    if (!pushPromptOn || !user || promptCheckedFor === user.id) return;
+    promptCheckedFor = user.id;
+    var st = await api.pushStatus();
+    if (st === 'needs-subscribe') { api.enablePush(); return; }
+    if (st !== 'default') return;
+    try {
+      var t = parseInt(localStorage.getItem('kn_push_later') || '0', 10);
+      if (t && Date.now() - t < 3 * 86400000) return;
+    } catch (e) {}
+    setTimeout(showPushPrompt, 1800);
+  }
+
   /* ---------- التحديث اللحظي ---------- */
   function subscribeRealtime() {
     if (!sb || !user) return;
@@ -183,6 +247,7 @@
     if (bellEl) bellEl.hidden = false;
     if (changed) refreshCount();
     subscribeRealtime();
+    maybePushPrompt();
   }
 
   /* ---------- إشعارات الجهاز (Push) ---------- */
@@ -285,14 +350,23 @@
         'padding:13px 14px;border-radius:18px;color:#fff;border:1px solid rgba(255,200,61,.55);' +
         'background:linear-gradient(180deg,#17367A,#0B1F4B);box-shadow:0 16px 32px rgba(5,15,43,.42),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .35s cubic-bezier(.2,.9,.3,1.15)}' +
       '#khadamatnaToast.show{transform:translate(-50%,0)}' +
-      '#khadamatnaToast .kn-t-ico{flex:none;width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#2B1D00;background:linear-gradient(180deg,#FFD66B,#FFB400);box-shadow:0 3px 0 #B87400}' +
-      '#khadamatnaToast .kn-t-ico svg{width:21px;height:21px}' +
-      '#khadamatnaToast .kn-t-title{font:800 15px/1.5 Cairo,Arial,sans-serif}' +
-      '#khadamatnaToast .kn-t-body{font:500 13px/1.6 Cairo,Arial,sans-serif;color:#C9D6F2;margin-top:1px}' +
-      '@media (prefers-reduced-motion:reduce){#khadamatnaToast,#siteNotificationBell{transition:none}}';
+      '.kn-t-ico{flex:none;width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#2B1D00;background:linear-gradient(180deg,#FFD66B,#FFB400);box-shadow:0 3px 0 #B87400}' +
+      '.kn-t-ico svg{width:21px;height:21px}' +
+      '.kn-t-title{font:800 15px/1.5 Cairo,Arial,sans-serif}' +
+      '.kn-t-body{font:500 13px/1.6 Cairo,Arial,sans-serif;color:#C9D6F2;margin-top:1px}' +
+      '#khadamatnaPrompt{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:50%;transform:translate(-50%,-170%);width:min(92vw,420px);z-index:10002;direction:rtl;visibility:hidden;' +
+        'padding:14px;border-radius:20px;color:#fff;border:1px solid rgba(255,200,61,.55);background:linear-gradient(180deg,#17367A,#0B1F4B);' +
+        'box-shadow:0 18px 36px rgba(5,15,43,.45),inset 0 1px 0 rgba(255,255,255,.18);transition:transform .4s cubic-bezier(.2,.9,.3,1.15)}' +
+      '#khadamatnaPrompt.show{transform:translate(-50%,0);visibility:visible}' +
+      '.kn-p-row{display:flex;gap:11px;align-items:flex-start}' +
+      '.kn-p-btns{display:flex;gap:10px;margin-top:13px}' +
+      '.kn-p-btns button{flex:1;min-height:46px;border:0;border-radius:14px;font:800 14px Cairo,Arial,sans-serif;cursor:pointer;transition:transform .08s ease,box-shadow .08s ease}' +
+      '.kn-p-yes{color:#2B1D00;background:linear-gradient(180deg,#FFD66B 0%,#FFB400 52%,#E69A00 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),0 4px 0 #B87400}' +
+      '.kn-p-yes:active{transform:translateY(3px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 1px 0 #B87400}' +
+      '.kn-p-no{color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 0 rgba(3,10,32,.5)}' +
+      '.kn-p-no:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 rgba(3,10,32,.5)}' +
+      '@media (prefers-reduced-motion:reduce){#khadamatnaToast,#khadamatnaPrompt,#siteNotificationBell{transition:none}}';
     document.head.appendChild(style);
-
-    var bellSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
 
     if (!noBell) {
       bellEl = document.createElement('a');
@@ -301,17 +375,17 @@
       bellEl.hidden = true;
       bellEl.title = 'مركز الإشعارات';
       bellEl.setAttribute('aria-label', 'مركز الإشعارات');
-      bellEl.innerHTML = bellSvg + '<span class="kn-badge" id="siteNotificationCount" hidden>0</span>';
+      bellEl.innerHTML = BELL_SVG + '<span class="kn-badge" id="siteNotificationCount" hidden>0</span>';
       document.body.appendChild(bellEl);
       badgeEl = bellEl.querySelector('.kn-badge');
     }
 
-    if (!noToast) {
+    {
       toastEl = document.createElement('div');
       toastEl.id = 'khadamatnaToast';
       toastEl.setAttribute('role', 'status');
       toastEl.setAttribute('aria-live', 'polite');
-      toastEl.innerHTML = '<span class="kn-t-ico">' + bellSvg + '</span><div><div class="kn-t-title"></div><div class="kn-t-body"></div></div>';
+      toastEl.innerHTML = '<span class="kn-t-ico">' + BELL_SVG + '</span><div><div class="kn-t-title"></div><div class="kn-t-body"></div></div>';
       document.body.appendChild(toastEl);
     }
   }

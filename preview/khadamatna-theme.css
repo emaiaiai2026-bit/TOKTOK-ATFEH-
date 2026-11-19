@@ -1,0 +1,286 @@
+/* خدماتنا — المظهر الموحد (كحلي وذهبي، أزرار مجسّمة)
+   كل صفحة بتربط الملف ده بعد الـ CSS بتاعها، وبتحط على <body> كلاس واحد:
+     kn-home     الرئيسية وشاشة الدخول
+     kn-map      صفحات الخريطة (العميل والسواق)
+     kn-content  الخدمات الطبية والشروط
+     kn-admin    لوحة الإدارة
+   أي تعديل في شكل التطبيق يتعمل هنا مرة واحدة. */
+@import url('https://fonts.googleapis.com/css2?family=Reem+Kufi:wght@600;700&display=swap');
+
+:root{
+  --kn-navy:#0B1F4B; --kn-navy-2:#14306B; --kn-navy-3:#07163A; --kn-navy-edge:#050F2B;
+  --kn-gold:#FFB400; --kn-gold-hi:#FFD66B; --kn-gold-lo:#E69A00; --kn-gold-edge:#B87400; --kn-gold-ink:#2B1D00;
+  --kn-green:#1F9D55; --kn-green-hi:#46CF80; --kn-green-lo:#178347; --kn-green-edge:#0F5F31;
+  --kn-pearl:#EEF2FA; --kn-line:#DCE3F0; --kn-muted:#5B6B8C; --kn-danger:#B42318;
+  --kn-display:'Reem Kufi','Cairo',system-ui,sans-serif;
+  --kn-pattern:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23FFB400' stroke-opacity='.15' stroke-width='1'%3E%3Crect x='14' y='14' width='28' height='28'/%3E%3Crect x='14' y='14' width='28' height='28' transform='rotate(45 28 28)'/%3E%3Ccircle cx='28' cy='28' r='3'/%3E%3C/g%3E%3C/svg%3E");
+  --kn-hero:radial-gradient(120% 90% at 88% -12%,rgba(255,180,0,.30),transparent 56%),var(--kn-pattern),linear-gradient(165deg,#12306F 0%,#0B1F4B 55%,#07163A 100%);
+}
+
+body{font-family:'Cairo',system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--kn-gold)!important;outline-offset:3px}
+
+/* ================= الأزرار المجسّمة ================= */
+.btn,.primary,.btn-outline,.mini,.logout,.mbtn,.choice,.slot,.vt,.sm,.google-btn,.tile.on{
+  transition:transform .08s ease,box-shadow .08s ease,filter .15s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ذهبي: الإجراء الأساسي */
+.btn:not(.go),.primary{
+  color:var(--kn-gold-ink);border:0;
+  background:linear-gradient(180deg,var(--kn-gold-hi) 0%,var(--kn-gold) 52%,var(--kn-gold-lo) 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(120,70,0,.18),0 5px 0 var(--kn-gold-edge),0 12px 20px rgba(184,116,0,.28);
+}
+.btn:not(.go):active,.primary:active{
+  background:linear-gradient(180deg,var(--kn-gold-hi) 0%,var(--kn-gold) 52%,var(--kn-gold-lo) 100%);
+  transform:translateY(4px);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),inset 0 -2px 0 rgba(120,70,0,.18),0 1px 0 var(--kn-gold-edge),0 4px 8px rgba(184,116,0,.26);
+}
+.btn:disabled,.primary:disabled{
+  transform:none;opacity:.75;filter:saturate(.35) brightness(1.06);cursor:default;
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.5),0 3px 0 #A99B78;
+}
+
+/* أخضر: ابدأ الشغل */
+.btn.go,.sm.go{
+  color:#fff;border:0;
+  background:linear-gradient(180deg,var(--kn-green-hi) 0%,var(--kn-green) 55%,var(--kn-green-lo) 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),inset 0 -2px 0 rgba(0,0,0,.14),0 5px 0 var(--kn-green-edge),0 12px 20px rgba(15,95,49,.28);
+}
+.btn.go:active,.sm.go:active{
+  background:linear-gradient(180deg,var(--kn-green-hi) 0%,var(--kn-green) 55%,var(--kn-green-lo) 100%);
+  transform:translateY(4px);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4),0 1px 0 var(--kn-green-edge),0 4px 8px rgba(15,95,49,.26);
+}
+.sm.go{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),0 3px 0 var(--kn-green-edge),0 6px 10px rgba(15,95,49,.22)}
+
+/* أبيض مجسّم: الإجراءات الثانوية */
+.btn-outline,.mini,.logout,.mbtn,.choice,.slot,.vt,.sm.pay{
+  color:var(--kn-navy);border:1px solid rgba(11,31,75,.08);
+  background:linear-gradient(180deg,#fff,#F1F5FC);
+  box-shadow:inset 0 1.5px 0 #fff,0 4px 0 #C5D0E8,0 8px 14px rgba(11,31,75,.1);
+}
+.btn-outline:active,.mini:active,.logout:active,.mbtn:active,.choice:active,.slot:active,.vt:active,.sm.pay:active{
+  background:linear-gradient(180deg,#fff,#F1F5FC);
+  transform:translateY(3px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8;
+}
+.btn-outline{font-weight:800}
+.mini{font-weight:800}
+
+/* كحلي: الحالة النشطة */
+.mbtn.on,.choice.active,.slot.active{
+  color:#FFC83D;border:0;
+  background:linear-gradient(180deg,#1E4190 0%,var(--kn-navy) 75%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.28),0 4px 0 var(--kn-navy-edge),0 10px 16px rgba(5,15,43,.28);
+}
+.vt.on{
+  border:2px solid var(--kn-gold);
+  background:linear-gradient(180deg,#FFFBEB,#FFEFB8);
+  box-shadow:inset 0 1.5px 0 #fff,0 4px 0 var(--kn-gold-edge),0 8px 14px rgba(184,116,0,.22);
+}
+.vt.off{box-shadow:inset 0 2px 5px rgba(11,31,75,.08);background:#F1F4FA}
+.vt small{font-weight:700}
+
+/* خطر */
+.btn-text{color:var(--kn-danger);font-weight:800}
+.danger,.sm.stop{
+  color:var(--kn-danger);border:1px solid #F0C9C5;background:linear-gradient(180deg,#FFF6F5,#FFE9E7);
+  box-shadow:inset 0 1.5px 0 #fff,0 3px 0 #EDBFBA,0 6px 10px rgba(180,35,24,.12);
+}
+.danger:active,.sm.stop:active{transform:translateY(2px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #EDBFBA}
+
+/* شارات الأسعار والحالات */
+.chip{
+  color:var(--kn-gold-ink);
+  background:linear-gradient(180deg,var(--kn-gold-hi),var(--kn-gold));
+  box-shadow:0 2px 0 var(--kn-gold-edge);
+}
+.status{background:linear-gradient(180deg,#FFE9A8,#FFD66B)!important;color:var(--kn-gold-ink);font-weight:800;box-shadow:0 2px 0 var(--kn-gold-edge)}
+
+/* ================= الحقول ================= */
+input,select,textarea{
+  border:1.5px solid var(--kn-line)!important;border-radius:14px!important;
+  box-shadow:inset 0 2px 4px rgba(11,31,75,.06);
+  transition:border-color .15s ease,box-shadow .15s ease;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:var(--kn-gold)!important;
+  box-shadow:0 0 0 3px rgba(255,180,0,.28),inset 0 2px 4px rgba(11,31,75,.05)!important;
+}
+label{color:var(--kn-navy)}
+
+/* ================= رسائل منبثقة ================= */
+#toast,#msg{
+  background:linear-gradient(180deg,#17367A,var(--kn-navy))!important;
+  color:#fff!important;border:1px solid rgba(255,200,61,.55)!important;border-radius:16px!important;
+  box-shadow:0 16px 32px rgba(5,15,43,.42),inset 0 1px 0 rgba(255,255,255,.16);
+  font-weight:700;
+}
+
+/* ================= البطاقات واللوحات ================= */
+.panel,.card{
+  border:1px solid var(--kn-line);border-radius:20px;
+  box-shadow:inset 0 1px 0 #fff,0 12px 24px -12px rgba(11,31,75,.28);
+}
+.notice,.pushrow{
+  border-radius:16px;background:linear-gradient(180deg,#FFF9E6,#FFF3CC);border:1px solid #F1D98C;
+}
+.empty{border-radius:18px}
+.doctor{border-radius:18px;box-shadow:inset 0 1px 0 #fff,0 6px 14px -8px rgba(11,31,75,.25);transition:transform .1s ease}
+.doctor:active{transform:scale(.99)}
+.doctor.selected{border:2px solid var(--kn-gold)!important;background:linear-gradient(180deg,#FFFBEB,#FFF3CC)!important}
+
+/* ================= الرأس الكحلي (كل الصفحات) ================= */
+.hero,.auth-hero{background:var(--kn-hero)}
+.hero h1,.auth-hero h1{font-family:var(--kn-display);font-weight:700;letter-spacing:0;text-shadow:0 2px 0 rgba(0,0,0,.25)}
+
+/* ================= الرئيسية kn-home ================= */
+.kn-home{background:var(--kn-navy-3)}
+.kn-home .hero{padding-bottom:42px}
+.kn-home .sheet,.kn-home .auth-card{
+  border-radius:28px 28px 0 0;
+  box-shadow:0 -3px 0 var(--kn-gold),0 -18px 34px -12px rgba(5,15,43,.5);
+}
+.kn-home .tile{border-radius:22px}
+.kn-home .tile.on{
+  border:1px solid rgba(11,31,75,.07);
+  background:linear-gradient(180deg,#fff,#F6F9FF);
+  box-shadow:inset 0 1.5px 0 #fff,0 5px 0 #C5D0E8,0 14px 22px -8px rgba(11,31,75,.3);
+}
+.kn-home .tile.on:active{
+  background:linear-gradient(180deg,#fff,#F6F9FF);
+  transform:translateY(4px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8,0 5px 10px -4px rgba(11,31,75,.25);
+}
+.kn-home .tile.on .ic{
+  background:radial-gradient(circle at 35% 28%,#fff,#FFF1C2);
+  box-shadow:0 0 0 2px rgba(255,180,0,.55),0 5px 10px -4px rgba(184,116,0,.45);
+}
+.kn-home .tile.soon{border-radius:22px;box-shadow:inset 0 2px 6px rgba(11,31,75,.06);background:#F3F6FC}
+.kn-home .tile.wide{
+  color:#fff;border:0;
+  background:linear-gradient(180deg,#1E4190 0%,var(--kn-navy) 75%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.28),0 5px 0 var(--kn-navy-edge),0 14px 22px -8px rgba(5,15,43,.45);
+}
+.kn-home .tile.wide:active{
+  background:linear-gradient(180deg,#1E4190 0%,var(--kn-navy) 75%);
+  transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 1px 0 var(--kn-navy-edge);
+}
+.kn-home .tile.wide .ic{background:linear-gradient(180deg,var(--kn-gold-hi),var(--kn-gold));color:var(--kn-gold-ink);box-shadow:0 4px 0 var(--kn-gold-edge)}
+.kn-home .tile.wide small{color:#C9D6F2}
+.kn-home .back{
+  display:inline-flex;align-items:center;padding:9px 15px;margin-bottom:14px;border-radius:14px;
+  color:#fff;font-weight:800;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 0 rgba(3,10,32,.5);
+}
+.kn-home .back:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 rgba(3,10,32,.5)}
+.kn-home .google-btn{
+  display:flex;align-items:center;justify-content:center;gap:12px;color:var(--kn-navy);border:1px solid rgba(11,31,75,.1);
+  background:linear-gradient(180deg,#fff,#F1F5FC);border-radius:18px;
+  box-shadow:inset 0 1.5px 0 #fff,0 5px 0 #C5D0E8,0 14px 22px -8px rgba(11,31,75,.3);
+}
+.kn-home .google-btn::before{
+  content:"";flex:none;width:26px;height:26px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath fill='%23EA4335' d='M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z'/%3E%3Cpath fill='%234285F4' d='M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.6 5.9c4.4-4.1 7-10.1 7-17.1z'/%3E%3Cpath fill='%23FBBC05' d='M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z'/%3E%3Cpath fill='%2334A853' d='M24 48c6.5 0 12-2.1 16-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+.kn-home .google-btn:active{
+  background:linear-gradient(180deg,#fff,#F1F5FC);
+  transform:translateY(4px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8;
+}
+
+/* ================= الخريطة kn-map ================= */
+.kn-map .brandpill{
+  color:#FFC83D;border:0;background:linear-gradient(180deg,#1E4190 0%,var(--kn-navy) 75%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),inset 0 -2px 0 rgba(0,0,0,.28),0 4px 0 var(--kn-navy-edge),0 10px 16px rgba(5,15,43,.3);
+}
+.kn-map .logout,.kn-map .mbtn{border-radius:22px}
+.kn-map .mbtn{border-radius:50%}
+.kn-map #sheet{
+  border-radius:28px 28px 0 0;border-top:0;
+  box-shadow:0 -3px 0 var(--kn-gold),0 -18px 34px -10px rgba(5,15,43,.4);
+}
+.kn-map .grab,.kn-map .sheet-grip{background:#E6C770}
+.kn-map #sheetHandle{color:var(--kn-navy-2)}
+.kn-map .loc{border-radius:16px}
+.kn-map .loc.on{border-color:var(--kn-gold);background:linear-gradient(180deg,#FFFBEB,#FFF3CC)}
+.kn-map .loc.on .mini{background:#fff}
+.kn-map .est,.kn-map .fare,.kn-map .dues,.kn-map .box{
+  border-radius:16px;background:linear-gradient(180deg,#F1F5FC,#E8EEF9);box-shadow:inset 0 2px 5px rgba(11,31,75,.07);
+}
+.kn-map .collect{
+  color:var(--kn-gold-ink);border-radius:18px;border:1.5px solid #F1D98C;
+  background:linear-gradient(180deg,#FFF9E6,#FFF0C2);
+  box-shadow:inset 0 2px 6px rgba(184,116,0,.14);
+}
+.kn-map .req{
+  border:1px solid #EADFC0;border-inline-start:6px solid var(--kn-gold);border-radius:20px;
+  box-shadow:inset 0 1px 0 #fff,0 12px 24px -10px rgba(11,31,75,.32);
+}
+.kn-map .avatar{
+  color:#FFC83D;background:linear-gradient(180deg,#1E4190,var(--kn-navy) 75%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.25),0 3px 0 var(--kn-navy-edge);
+}
+.kn-map .stat .sdot,.kn-map .sdot{background:var(--kn-gold)}
+.kn-map .authsheet{border-radius:28px 28px 0 0;box-shadow:0 -3px 0 var(--kn-gold),0 -18px 34px -12px rgba(5,15,43,.5)}
+.kn-map #authScreen{background:var(--kn-navy-3)}
+.kn-map .cashnote,.kn-map .note{color:var(--kn-muted)}
+.kn-map .destination-search button{
+  color:var(--kn-gold-ink);
+  background:linear-gradient(180deg,var(--kn-gold-hi) 0%,var(--kn-gold) 52%,var(--kn-gold-lo) 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),0 4px 0 var(--kn-gold-edge),0 8px 14px rgba(184,116,0,.25);
+}
+.kn-map .destination-search button:active{transform:translateY(3px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 1px 0 var(--kn-gold-edge)}
+.kn-map .destination-result{border-radius:14px;box-shadow:inset 0 1px 0 #fff,0 3px 0 #D3DCEE}
+.kn-map .map-label{background:var(--kn-navy)!important;color:#FFC83D!important}
+
+/* ================= الخدمات الطبية والشروط kn-content ================= */
+.kn-content header{
+  position:relative;padding-bottom:36px;border-radius:0 0 28px 28px;background:var(--kn-hero);
+  box-shadow:0 14px 28px -12px rgba(5,15,43,.55);
+}
+.kn-content header::after{
+  content:"";position:absolute;left:24px;right:24px;bottom:0;height:4px;border-radius:4px 4px 0 0;
+  background:linear-gradient(90deg,transparent,var(--kn-gold) 20%,var(--kn-gold-hi) 50%,var(--kn-gold) 80%,transparent);
+}
+.kn-content header h1{font-family:var(--kn-display);font-weight:700;font-size:31px;text-shadow:0 2px 0 rgba(0,0,0,.25);border-bottom:0}
+.kn-content header a{
+  display:inline-flex;align-items:center;padding:9px 15px;border-radius:14px;color:#fff;font-weight:800;font-size:14px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 4px 0 rgba(3,10,32,.5);
+}
+.kn-content header a:active{transform:translateY(3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 rgba(3,10,32,.5)}
+.kn-content main{margin-top:-6px}
+.kn-content .panel{margin-top:14px}
+.kn-content h2{font-weight:800}
+.kn-content .choice{border-radius:20px;min-height:116px}
+.kn-content .note{background:linear-gradient(180deg,#FFF9E6,#FFF3CC);border-radius:16px}
+.kn-content h2::before{content:"";display:inline-block;width:5px;height:1em;margin-inline-end:9px;border-radius:3px;vertical-align:-2px;background:linear-gradient(180deg,var(--kn-gold-hi),var(--kn-gold-lo))}
+
+/* ================= لوحة الإدارة kn-admin ================= */
+.kn-admin #authScreen,.kn-admin #pinScreen{background:var(--kn-navy-3)}
+.kn-admin .authsheet,.kn-admin .pinSheet{border-radius:28px 28px 0 0;box-shadow:0 -3px 0 var(--kn-gold),0 -18px 34px -12px rgba(5,15,43,.5)}
+.kn-admin header{
+  background:linear-gradient(165deg,#12306F 0%,var(--kn-navy) 60%,var(--kn-navy-3) 100%);
+  box-shadow:0 3px 0 var(--kn-gold),0 10px 20px -8px rgba(5,15,43,.5);
+}
+.kn-admin header b{font-family:var(--kn-display);font-weight:700;border-bottom:3px solid var(--kn-gold)}
+.kn-admin header button{
+  color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:12px;font-weight:800;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 3px 0 rgba(3,10,32,.5);
+}
+.kn-admin header button:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.3),0 1px 0 rgba(3,10,32,.5)}
+.kn-admin nav{box-shadow:0 -8px 20px -10px rgba(5,15,43,.3);border-top:0}
+.kn-admin nav button.on{color:var(--kn-navy);border-top-color:var(--kn-gold)}
+.kn-admin .count{
+  color:#FFC83D;border:0;background:linear-gradient(180deg,#1E4190 0%,var(--kn-navy) 75%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 3px 0 var(--kn-navy-edge);
+}
+.kn-admin .stat{border-radius:14px;background:linear-gradient(180deg,#F1F5FC,#E8EEF9);box-shadow:inset 0 2px 5px rgba(11,31,75,.07)}
+.kn-admin .sm{font-weight:800;box-shadow:0 3px 0 rgba(11,31,75,.18)}
+.kn-admin .sm.pay{box-shadow:inset 0 1.5px 0 #fff,0 3px 0 #C5D0E8}
+.kn-admin .sm.go{box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),0 3px 0 var(--kn-green-edge)}
+.kn-admin .sm.stop{box-shadow:inset 0 1.5px 0 #fff,0 3px 0 #EDBFBA}
+
+@media (prefers-reduced-motion:reduce){
+  .btn,.primary,.btn-outline,.mini,.logout,.mbtn,.choice,.slot,.vt,.sm,.google-btn,.tile.on,.doctor{transition:none}
+}

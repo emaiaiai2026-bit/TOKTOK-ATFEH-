@@ -133,8 +133,9 @@ window.__loadExternalScripts = function (groups) {
 
   #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:12px;z-index:3000;max-width:90%;text-align:center;font-size:14px}
 </style>
+<link rel="stylesheet" href="khadamatna-theme.css?v=20261116">
 </head>
-<body>
+<body class="kn-map">
 
 <!-- ===== الدخول ===== -->
 <div id="authScreen" class="hidden">
@@ -836,5 +837,6 @@ sb.auth.getSession().then(({ data, error }) => {
 });
 </script>
 
+<script src="notification-bell.js" data-top="92" defer></script>
 </body>
 </html>

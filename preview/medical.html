@@ -16,8 +16,9 @@ button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:12px 15px
 .notice{background:#fff7dc;border:1px solid #f1d98b;padding:12px;border-radius:12px;margin-top:12px;font-size:13px;line-height:1.8}
 #msg{position:fixed;bottom:16px;left:12px;right:12px;max-width:650px;margin:auto;background:var(--navy);color:#fff;padding:12px 15px;border-radius:12px;text-align:center;z-index:5}[hidden]{display:none!important}
 @media(max-width:390px){.actions{grid-template-columns:1fr}}
-</style></head>
-<body>
+</style><link rel="stylesheet" href="khadamatna-theme.css?v=20261116">
+</head>
+<body class="kn-content">
 <header><a href="./index.html">← الرجوع للخدمات</a><h1>الخدمات الطبية</h1><p>احجز عند طبيب أو انضم كطبيب لخدمة عملاء خدماتنا.</p></header>
 <main>
 <section class="panel" id="choosePanel">
@@ -86,4 +87,5 @@ $('submitBtn').textContent='تحديث طلب الانضمام';msg('تم إرس
 };
 }
 </script>
+<script src="notification-bell.js" defer></script>
 </body></html>
