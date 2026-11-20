@@ -36,6 +36,7 @@
   var toastEl = null;
   var toastTimer = null;
   var promptEl = null;
+  var audioCtx = null;
   var promptCheckedFor = null;
   var BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
 
@@ -112,27 +113,46 @@
   api.refresh = refreshCount;
 
   /* ---------- تنبيه داخل التطبيق ---------- */
-  function chime() {
+  /* المتصفح بيمنع الصوت لحد أول لمسة على الصفحة، فبنفتح السماعة مرة واحدة عند أول لمسة */
+  var UNLOCK_EVENTS = ['pointerdown', 'touchstart', 'click', 'keydown'];
+  function removeUnlockListeners() {
+    UNLOCK_EVENTS.forEach(function (ev) { window.removeEventListener(ev, unlockAudio, true); });
+  }
+  function unlockAudio() {
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      var ctx = new AC();
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().then(function () { if (audioCtx.state === 'running') removeUnlockListeners(); });
+      } else if (audioCtx.state === 'running') {
+        removeUnlockListeners();
+      }
+    } catch (e) {}
+  }
+  UNLOCK_EVENTS.forEach(function (ev) { window.addEventListener(ev, unlockAudio, { capture: true, passive: true }); });
+  api.audioState = function () { return audioCtx ? audioCtx.state : 'locked'; };
+
+  function chime() {
+    try {
+      if (!audioCtx) return; /* المستخدم لسه ما لمسش الصفحة: المتصفح بيمنع الصوت */
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      var ctx = audioCtx;
       var t = ctx.currentTime;
       [880, 1175].forEach(function (f, i) {
         var o = ctx.createOscillator();
         var g = ctx.createGain();
-        var s = t + i * 0.16;
+        var s0 = t + i * 0.16;
         o.type = 'sine';
         o.frequency.value = f;
-        g.gain.setValueAtTime(0.0001, s);
-        g.gain.exponentialRampToValueAtTime(0.18, s + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, s + 0.28);
+        g.gain.setValueAtTime(0.0001, s0);
+        g.gain.exponentialRampToValueAtTime(0.35, s0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, s0 + 0.34);
         o.connect(g);
         g.connect(ctx.destination);
-        o.start(s);
-        o.stop(s + 0.3);
+        o.start(s0);
+        o.stop(s0 + 0.36);
       });
-      setTimeout(function () { try { ctx.close(); } catch (e) {} }, 900);
     } catch (e) {}
   }
 
