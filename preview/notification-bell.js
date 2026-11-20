@@ -37,6 +37,7 @@
   var toastTimer = null;
   var promptEl = null;
   var audioCtx = null;
+  var lastAlertAt = 0;
   var promptCheckedFor = null;
   var BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
 
@@ -156,6 +157,14 @@
     } catch (e) {}
   }
 
+  /* يشغّل النغمة مرة واحدة حتى لو وصل التنبيه من مسارين (لحظي + عامل الإشعارات) */
+  function playAlert() {
+    var now = Date.now();
+    if (now - lastAlertAt < 4000) return;
+    lastAlertAt = now;
+    chime();
+  }
+
   function showToast(n) {
     if (noToast || !n || !toastEl) return;
     toastEl.querySelector('.kn-t-title').textContent = n.title || 'إشعار جديد';
@@ -170,7 +179,7 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 7000);
     if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) {} }
-    chime();
+    playAlert();
   }
 
   function handleIncoming(n) {
@@ -410,8 +419,19 @@
     }
   }
 
+  function listenForPushMessages() {
+    if (!('serviceWorker' in navigator) || noToast) return;
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      var d = e && e.data;
+      if (!d || d.type !== 'khadamatna-push') return;
+      refreshCount();
+      playAlert();
+    });
+  }
+
   function boot() {
     mountUI();
+    listenForPushMessages();
     getClient(function (c) {
       c.auth.onAuthStateChange(function (event, session) {
         setTimeout(function () { onSession(session); }, 0);
