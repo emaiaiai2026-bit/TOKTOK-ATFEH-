@@ -39,6 +39,7 @@
   var audioCtx = null;
   var lastAlertAt = 0;
   var promptCheckedFor = null;
+  var healedFor = null;
   var BELL_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>';
 
   /* ---------- اتصال Supabase ---------- */
@@ -234,6 +235,22 @@
     requestAnimationFrame(function () { promptEl.classList.add('show'); });
   }
 
+  /* علاج ذاتي: لو الخادم مسح اشتراك الجهاز (انتهى عند جوجل)، نعيد تسجيله، ونجدّده مرة كل يوم */
+  async function healPush() {
+    if (!user || healedFor === user.id) return;
+    healedFor = user.id;
+    try {
+      var st = await api.pushStatus();
+      if (st === 'needs-subscribe') { api.enablePush(); return; }
+      if (st !== 'enabled') return;
+      var last = 0;
+      try { last = parseInt(localStorage.getItem('kn_push_fresh') || '0', 10); } catch (e) {}
+      var stale = !last || (Date.now() - last) > 86400000;
+      var r = await api.enablePush(null, stale);
+      if (stale && r && r.ok) { try { localStorage.setItem('kn_push_fresh', String(Date.now())); } catch (e) {} }
+    } catch (e) {}
+  }
+
   async function maybePushPrompt() {
     if (!pushPromptOn || !user || promptCheckedFor === user.id) return;
     promptCheckedFor = user.id;
@@ -277,6 +294,7 @@
     if (changed) refreshCount();
     subscribeRealtime();
     maybePushPrompt();
+    healPush();
   }
 
   /* ---------- إشعارات الجهاز (Push) ---------- */
@@ -303,7 +321,7 @@
     }
   };
 
-  api.enablePush = async function (pageUrl) {
+  api.enablePush = async function (pageUrl, forceFresh) {
     if (!pushSupported()) return { ok: false, reason: 'unsupported' };
     var perm = Notification.permission;
     if (perm === 'denied') return { ok: false, reason: 'denied' };
@@ -317,6 +335,7 @@
       await navigator.serviceWorker.ready;
       var want = b64ToU8(VAPID_PUBLIC_KEY);
       var sub = await reg.pushManager.getSubscription();
+      if (sub && forceFresh) { try { await sub.unsubscribe(); } catch (e) {} sub = null; }
       if (sub) {
         var cur = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
         var same = cur && cur.length === want.length && cur.every(function (v, i) { return v === want[i]; });
