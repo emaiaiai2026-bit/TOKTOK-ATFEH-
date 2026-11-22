@@ -335,7 +335,12 @@
       await navigator.serviceWorker.ready;
       var want = b64ToU8(VAPID_PUBLIC_KEY);
       var sub = await reg.pushManager.getSubscription();
-      if (sub && forceFresh) { try { await sub.unsubscribe(); } catch (e) {} sub = null; }
+      if (sub && forceFresh) {
+        // نمسح الاشتراك القديم من القاعدة قبل ما نلغيه، عشان ما يفضلش صف ميت
+        try { await c.rpc('remove_push_subscription', { p_endpoint: sub.endpoint }); } catch (e) {}
+        try { await sub.unsubscribe(); } catch (e) {}
+        sub = null;
+      }
       if (sub) {
         var cur = sub.options && sub.options.applicationServerKey ? new Uint8Array(sub.options.applicationServerKey) : null;
         var same = cur && cur.length === want.length && cur.every(function (v, i) { return v === want[i]; });
