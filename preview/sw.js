@@ -38,13 +38,22 @@ self.addEventListener('notificationclick', event => {
   }
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    // 1) نوجّه نافذة مفتوحة للصفحة المطلوبة (بتنجح بس لو النافذة تابعة لعامل الإشعارات)
     for (const client of windows) {
-      if (!('focus' in client)) continue;
-      if ('navigate' in client) {
-        try { await client.navigate(target.href); } catch (_) {}
-      }
-      return client.focus();
+      if (!('navigate' in client)) continue;
+      try {
+        const moved = await client.navigate(target.href);
+        if (moved && 'focus' in moved) return await moved.focus();
+      } catch (_) { /* ننتقل للحل التالي */ }
     }
-    return self.clients.openWindow(target.href);
+    // 2) لو مفيش، أو التوجيه فشل: نفتح نافذة جديدة (دايمًا بتشتغل من الضغط على إشعار)
+    try {
+      const opened = await self.clients.openWindow(target.href);
+      if (opened) return opened;
+    } catch (_) { /* آخر حل */ }
+    // 3) آخر حل: نجيب أي نافذة مفتوحة قدام
+    for (const client of windows) {
+      if ('focus' in client) { try { return await client.focus(); } catch (_) {} }
+    }
   })());
 });
