@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1F4B">
+<link rel="manifest" href="app-home.webmanifest">
+<link rel="icon" type="image/png" href="logo-192.png">
+<title>لوحة المتجر | خدماتنا</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1F4B;--gold:#FFB400;--gold-edge:#B87400;--pearl:#EEF2FA;--line:#DCE3F0;--muted:#5B6B8C;--danger:#B42318;--ok:#1F7A4D}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--pearl);color:var(--navy);font-family:Cairo,system-ui,sans-serif;padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
+[hidden],.hidden{display:none!important}
+header a{text-decoration:none}
+header{background:#0B1F4B;color:#fff;padding:calc(16px + env(safe-area-inset-top,0px)) 18px 30px}
+.hbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:18px}
+header h1{margin:0;font-size:31px;line-height:1.3}
+header p{margin:6px 0 0;font-size:14px;font-weight:600;color:#D6E0F7}
+main{max-width:720px;margin:0 auto;padding:0 14px}
+button{font:inherit}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px;margin:0 0 14px;box-shadow:inset 0 1px 0 #fff,0 12px 24px -14px rgba(11,31,75,.3)}
+.card h2{margin:0 0 10px;font-size:17px;font-weight:800}
+label{display:block;margin:12px 0 6px;font-size:13.5px;font-weight:800}
+.fld{width:100%;min-height:48px;padding:10px 14px;font:inherit;font-size:15px;font-weight:600;color:var(--navy);background:#fff}
+textarea.fld{min-height:80px;resize:vertical;line-height:1.7}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{margin:6px 0 0;font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.7}
+.act{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:50px;padding:0 20px;border:0;border-radius:15px;font-size:15.5px;font-weight:800;cursor:pointer;text-decoration:none;transition:transform .08s ease,box-shadow .08s ease}
+.act.block{width:100%;margin-top:14px}
+.act.sm{min-height:44px;padding:0 15px;font-size:14px;border-radius:13px}
+.act.pri{color:#2B1D00;background:linear-gradient(180deg,#FFD66B 0%,#FFB400 52%,#E69A00 100%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),0 5px 0 var(--gold-edge),0 12px 20px rgba(184,116,0,.28)}
+.act.pri:active{transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.6),0 1px 0 var(--gold-edge)}
+.act.go{color:#fff;background:linear-gradient(180deg,#46CF80,#1F9D55 55%,#178347);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.45),0 5px 0 #0F5F31,0 12px 20px rgba(15,95,49,.25)}
+.act.go:active{transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.4),0 1px 0 #0F5F31}
+.act.navy{color:#FFC83D;background:linear-gradient(180deg,#1E4190,#0B1F4B 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 5px 0 #050F2B}
+.act.navy:active{transform:translateY(4px);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 1px 0 #050F2B}
+.act.soft{color:var(--navy);background:linear-gradient(180deg,#fff,#F1F5FC);border:1px solid rgba(11,31,75,.1);box-shadow:inset 0 1.5px 0 #fff,0 4px 0 #C5D0E8}
+.act.soft:active{transform:translateY(3px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8}
+.act.danger{color:var(--danger);background:linear-gradient(180deg,#FFF6F5,#FFE9E7);border:1px solid #F0C9C5;box-shadow:inset 0 1.5px 0 #fff,0 4px 0 #EDBFBA}
+.act:disabled{opacity:.6;cursor:default;transform:none;filter:saturate(.5)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .act{flex:1}
+
+/* اختيار النوع */
+.types{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.type{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px;border:2px solid transparent;border-radius:20px;font-size:16px;font-weight:800;color:var(--navy);cursor:pointer;background:linear-gradient(180deg,#fff,#F1F5FC);box-shadow:inset 0 1.5px 0 #fff,0 5px 0 #C5D0E8}
+.type svg{width:34px;height:34px}
+.type.on{border-color:var(--gold);background:linear-gradient(180deg,#FFFBEB,#FFEFB8);box-shadow:inset 0 1.5px 0 #fff,0 5px 0 var(--gold-edge)}
+
+/* التبويبات */
+.tabs{display:flex;gap:10px;margin:18px 0 14px}
+.tab{flex:1;min-height:48px;border:0;border-radius:15px;font-size:15px;font-weight:800;color:var(--navy);cursor:pointer;background:#fff;box-shadow:inset 0 1.5px 0 #fff,0 4px 0 #C5D0E8;display:flex;align-items:center;justify-content:center;gap:8px}
+.tab.on{color:#FFC83D;background:linear-gradient(180deg,#1E4190,#0B1F4B 75%);box-shadow:inset 0 1.5px 0 rgba(255,255,255,.28),0 4px 0 #050F2B}
+.bub{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--gold);color:#2B1D00;font-size:12px;line-height:22px;text-align:center}
+
+/* حالة المتجر */
+.status{display:flex;align-items:center;gap:12px;margin:18px 0 0;padding:14px 16px;border-radius:18px;font-weight:700;line-height:1.7;font-size:14.5px;background:linear-gradient(180deg,#FFF9E6,#FFF3CC);border:1px solid #F1D98C}
+.status.bad{background:#FFE9E7;border-color:#F0C9C5;color:var(--danger)}
+.status.ok{background:#E5F5EC;border-color:#BFE3CF;color:var(--ok)}
+.openrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.openrow b{font-size:16px}
+.openrow span{display:block;font-size:13px;font-weight:600;color:var(--muted)}
+
+/* الطلبات */
+.grp{margin:20px 2px 8px;font-size:15px;font-weight:800;display:flex;align-items:center;gap:9px}
+.grp::before{content:"";width:5px;height:1.1em;border-radius:3px;background:linear-gradient(180deg,#FFD66B,#E69A00)}
+.ord{background:#fff;border:1px solid var(--line);border-radius:20px;padding:15px;margin:0 0 13px;box-shadow:0 10px 20px -12px rgba(11,31,75,.35)}
+.ord.new{border-color:#EADFC0;border-inline-start:6px solid var(--gold)}
+.o-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.o-name{font-size:16.5px;font-weight:800}
+.st{flex:none;font-size:12px;font-weight:800;padding:4px 12px;border-radius:999px;background:#E4EAF6;color:#33456E}
+.st.go{background:linear-gradient(180deg,#FFE9A8,#FFD66B);color:#2B1D00;box-shadow:0 2px 0 var(--gold-edge)}
+.st.done{background:#E5F5EC;color:var(--ok)}
+.st.bad{background:#FFE9E7;color:var(--danger)}
+.o-meta{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--muted);line-height:1.7}
+.o-addr{margin:8px 0 0;font-size:14px;font-weight:700;line-height:1.7}
+.o-note{margin:8px 0 0;padding:8px 12px;border-radius:12px;font-size:13.5px;font-weight:700;line-height:1.7;background:#FFF6D6}
+.lines{margin:10px 0 0;padding:0;list-style:none}
+.lines li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14.5px;font-weight:700}
+.lines li:last-child{border-bottom:0}
+.lines small{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+.tot{display:flex;justify-content:space-between;margin-top:8px;padding-top:10px;border-top:2px solid var(--navy);font-size:17px;font-weight:800}
+.ord .row{margin-top:12px}
+
+/* المنيو */
+.sec{margin:18px 2px 8px;font-size:15.5px;font-weight:800;display:flex;align-items:center;gap:9px}
+.sec::before{content:"";width:5px;height:1.1em;border-radius:3px;background:linear-gradient(180deg,#FFD66B,#E69A00)}
+.it{display:flex;align-items:center;gap:10px;margin:0 0 10px;padding:12px 14px;background:#fff;border:1px solid var(--line);border-radius:18px}
+.it.off{background:#F3F6FC}
+.i-main{flex:1;min-width:0}
+.i-name{font-size:15.5px;font-weight:800;line-height:1.5}
+.i-price{font-size:14px;font-weight:800;color:var(--gold-edge)}
+.it.off .i-name,.it.off .i-price{color:#8A98B8}
+.sw{position:relative;flex:none;width:58px;height:34px;border:0;border-radius:17px;cursor:pointer;background:#C9D2E6;box-shadow:inset 0 2px 5px rgba(11,31,75,.25);transition:background .15s ease}
+.sw::after{content:"";position:absolute;top:3px;right:3px;width:28px;height:28px;border-radius:50%;background:#fff;box-shadow:0 2px 0 rgba(11,31,75,.25);transition:transform .15s ease}
+.sw[aria-checked="true"]{background:linear-gradient(180deg,#46CF80,#1F9D55)}
+.sw[aria-checked="true"]::after{transform:translateX(-24px)}
+.ibtn{flex:none;width:42px;height:42px;border:0;border-radius:13px;cursor:pointer;font-size:16px;font-weight:800;color:var(--navy);background:linear-gradient(180deg,#fff,#F1F5FC);border:1px solid rgba(11,31,75,.1);box-shadow:inset 0 1.5px 0 #fff,0 3px 0 #C5D0E8}
+.empty{margin-top:20px;padding:30px 20px;text-align:center;border-radius:22px;background:#fff;border:1px solid var(--line)}
+.empty b{display:block;font-size:17px;font-weight:800}
+.empty span{display:block;margin:6px 0 0;font-size:14px;color:var(--muted);line-height:1.8}
+.sk{height:92px;margin-bottom:13px;border-radius:20px;background:linear-gradient(100deg,#E3E9F5 30%,#F3F6FC 50%,#E3E9F5 70%);background-size:200% 100%}
+@media (prefers-reduced-motion:no-preference){.sk{animation:sh 1.4s linear infinite}@keyframes sh{to{background-position:-200% 0}}}
+@media (prefers-reduced-motion:reduce){.sw,.sw::after{transition:none}}
+</style>
+<link rel="stylesheet" href="khadamatna-theme.css?v=20261116">
+</head>
+<body class="kn-content">
+
+<header>
+  <div class="hbar">
+    <a href="./">رجوع للخدمات</a>
+    <a href="notifications.html">الإشعارات</a>
+  </div>
+  <h1>لوحة المتجر</h1>
+  <p id="sub">سجّل مطعمك أو بقالتك واستقبل الطلبات.</p>
+</header>
+
+<main style="padding-top:6px"><div id="view"><div class="sk"></div><div class="sk"></div></div></main>
+<div id="toast" class="hidden" role="status" style="position:fixed;top:70px;left:50%;transform:translateX(-50%);padding:11px 18px;z-index:3000;max-width:90%;text-align:center;font-size:14px"></div>
+
+<script src="notification-bell.js" data-top="72" data-push-prompt defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var K = window.KhadamatnaNotify, view = $('view');
+  if (!K) { view.textContent = 'تعذر تحميل الصفحة. تأكد من الإنترنت وحدّث.'; return; }
+
+  var ICON = {
+    restaurant: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 3c-2 1.5-3 4-3 7h3v11"/></svg>',
+    grocery: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h16l-1.5 9a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 9z"/><path d="M8 9l3-5M16 9l-3-5"/></svg>'
+  };
+  var STATUS = { placed: ['جديد', 'go'], accepted: ['اتقبل', 'go'], preparing: ['بيتحضّر', 'go'], ready: ['جاهز', 'go'], out_for_delivery: ['في الطريق', 'go'], delivered: ['اتسلّم', 'done'], rejected: ['اترفض', 'bad'], cancelled: ['العميل لغاه', 'bad'] };
+  var NEXT = { accepted: ['preparing', 'بدأ التحضير'], preparing: ['out', 'خرج للتوصيل'], ready: ['out', 'خرج للتوصيل'], out_for_delivery: ['delivered', 'تم التسليم'] };
+  var ERR = {
+    'invalid phone': 'رقم الموبايل مش صحيح. اكتب رقم مصري صحيح.', 'invalid address': 'اكتب العنوان بالتفصيل.', 'store already exists': 'عندك متجر مسجّل بالفعل.',
+    'invalid price': 'السعر مش صحيح.', 'invalid name': 'اكتب الاسم.', 'item not found': 'الصنف مش موجود.', 'invalid transition': 'حالة الطلب اتغيّرت. حدّث الصفحة.',
+    'order not found': 'الطلب مش موجود.', 'account not allowed': 'الحساب ده مينفعش يسجّل متجر.', 'no store': 'مفيش متجر مسجّل.'
+  };
+  function errText(e) { var m = String((e && e.message) || ''); for (var k in ERR) if (m.indexOf(k) >= 0) return ERR[k]; return 'حصل خطأ: ' + m; }
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  function num(n) { return Number(n).toLocaleString('ar-EG', { maximumFractionDigits: 2 }); }
+  function money(n) { return num(n) + ' ج'; }
+  function toast(t) { var e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.add('hidden'); }, 4200); }
+  function waNumber(p) { var d = String(p || '').replace(/\D/g, ''); if (d.indexOf('0') === 0) d = '20' + d.slice(1); return d; }
+  function ago(v) { var m = Math.max(0, Math.floor((Date.now() - new Date(v).getTime()) / 60000)); if (m < 1) return 'الآن'; if (m < 60) return 'منذ ' + num(m) + ' دقيقة'; var h = Math.floor(m / 60); if (h < 24) return 'منذ ' + num(h) + ' ساعة'; return new Date(v).toLocaleDateString('ar-EG'); }
+
+  var sb = await K.client();
+  var sess = await sb.auth.getSession();
+  if (!sess.data || !sess.data.session) { location.replace('./'); return; }
+  var user = sess.data.session.user;
+  sb.auth.onAuthStateChange(function (ev) { if (ev === 'SIGNED_OUT') location.replace('./'); });
+
+  var store = null, tab = 'orders', orders = [], items = [], timer = null, busy = false;
+
+  async function boot() {
+    var r = await sb.from('stores').select('*').eq('owner_id', user.id).maybeSingle();
+    if (r.error) { view.textContent = ''; view.appendChild(box('تعذر تحميل بيانات المتجر', r.error.message)); return; }
+    store = r.data; render();
+  }
+  function box(t, s) { var b = el('div', 'empty'); b.appendChild(el('b', '', t)); if (s) b.appendChild(el('span', '', s)); return b; }
+
+  function render() {
+    clearInterval(timer); timer = null; view.textContent = '';
+    if (!store) { $('sub').textContent = 'سجّل مطعمك أو بقالتك واستقبل الطلبات.'; return applyForm(); }
+    $('sub').textContent = store.name;
+    var st = store.approval_status;
+    var msg = { pending: ['طلبك قيد المراجعة من الإدارة. تقدر تجهّز المنيو دلوقتي، وهيظهر للعملاء بعد الموافقة.', ''],
+      approved: ['', ''], rejected: ['تم رفض طلب المتجر. تواصل مع الإدارة لمعرفة السبب.', 'bad'], suspended: ['تم إيقاف المتجر. تواصل مع الإدارة.', 'bad'] }[st];
+    if (msg[0]) view.appendChild(el('div', 'status ' + msg[1], msg[0]));
+    if (st === 'rejected' || st === 'suspended') return;
+    var tabs = el('div', 'tabs'); var names = st === 'approved' ? [['orders', 'الطلبات'], ['menu', 'المنيو'], ['store', 'المتجر']] : [['menu', 'المنيو'], ['store', 'المتجر']];
+    if (names.every(function (n) { return n[0] !== tab; })) tab = names[0][0];
+    names.forEach(function (n) {
+      var b = el('button', 'tab' + (n[0] === tab ? ' on' : ''), n[1]); b.type = 'button';
+      if (n[0] === 'orders') { var c = orders.filter(function (o) { return o.status === 'placed'; }).length; if (c) b.appendChild(el('span', 'bub', num(c))); b.id = 'tabOrders'; }
+      b.addEventListener('click', function () { tab = n[0]; render(); }); tabs.appendChild(b);
+    });
+    view.appendChild(tabs);
+    var body = el('div'); view.appendChild(body);
+    if (tab === 'orders') ordersTab(body); else if (tab === 'menu') menuTab(body); else storeTab(body);
+  }
+
+  /* ---------- التسجيل ---------- */
+  function field(parent, label, id, val, type, ph) { var l = el('label', '', label); l.setAttribute('for', id); var i = el('input', 'fld'); i.id = id; i.type = type || 'text'; i.value = val == null ? '' : val; if (ph) i.placeholder = ph; parent.append(l, i); return i; }
+  function area(parent, label, id, val, ph) { var l = el('label', '', label); l.setAttribute('for', id); var i = el('textarea', 'fld'); i.id = id; i.value = val || ''; if (ph) i.placeholder = ph; parent.append(l, i); return i; }
+
+  async function applyForm() {
+    var type = 'restaurant';
+    var c = el('div', 'card'); c.appendChild(el('h2', '', 'نوع المتجر'));
+    var types = el('div', 'types');
+    [['restaurant', 'مطعم'], ['grocery', 'بقالة']].forEach(function (t) {
+      var b = el('button', 'type' + (t[0] === type ? ' on' : '')); b.type = 'button'; b.innerHTML = ICON[t[0]]; b.appendChild(el('span', '', t[1]));
+      b.addEventListener('click', function () { type = t[0]; [].forEach.call(types.children, function (x) { x.classList.toggle('on', x === b); }); }); types.appendChild(b);
+    });
+    c.appendChild(types); view.appendChild(c);
+    var pr = await sb.from('profiles').select('phone').eq('id', user.id).maybeSingle();
+    var f = el('div', 'card'); f.appendChild(el('h2', '', 'بيانات المتجر'));
+    var name = field(f, 'اسم المتجر', 'a-name', '', 'text', 'مثلًا: مطعم النور');
+    var desc = area(f, 'وصف مختصر (اختياري)', 'a-desc', '', 'وجبات سريعة ومشويات');
+    var phone = field(f, 'رقم موبايل المتجر', 'a-phone', pr.data && pr.data.phone, 'tel', '01xxxxxxxxx'); phone.inputMode = 'tel';
+    var addr = area(f, 'عنوان المتجر', 'a-addr', '', 'الشارع وأقرب علامة');
+    var two = el('div', 'two'); var fa = el('div'), fb = el('div'); two.append(fa, fb);
+    var fee = field(fa, 'سعر التوصيل (جنيه)', 'a-fee', '0', 'number'); var min = field(fb, 'أقل قيمة للطلب', 'a-min', '0', 'number');
+    fee.min = min.min = '0'; fee.inputMode = min.inputMode = 'decimal'; f.appendChild(two);
+    f.appendChild(el('p', 'hint', 'التوصيل بيكون عن طريقك. حدّد سعر التوصيل اللي يناسبك، والدفع كاش من العميل.'));
+    view.appendChild(f);
+    var go = el('button', 'act pri block', 'إرسال طلب التسجيل'); go.type = 'button'; view.appendChild(go);
+    go.addEventListener('click', async function () {
+      go.disabled = true; go.textContent = 'جاري الإرسال...';
+      var r = await sb.rpc('store_apply_self', { p_type: type, p_name: name.value, p_description: desc.value, p_phone: phone.value, p_address: addr.value, p_lat: null, p_lng: null, p_delivery_fee: Number(fee.value) || 0, p_min_order: Number(min.value) || 0 });
+      if (r.error) { toast(errText(r.error)); go.disabled = false; go.textContent = 'إرسال طلب التسجيل'; return; }
+      toast('تم إرسال الطلب. الإدارة هتراجعه.'); await boot();
+    });
+  }
+
+  /* ---------- الطلبات ---------- */
+  async function loadOrders() {
+    var r = await sb.from('orders').select('id,status,total,subtotal,delivery_fee,customer_name,customer_phone,address_text,notes,created_at,order_items(name,price,quantity,notes)').eq('store_id', store.id).order('created_at', { ascending: false }).limit(60);
+    if (r.error) return false; orders = r.data || []; return true;
+  }
+  function ordersTab(body) {
+    var live = el('div'); body.appendChild(live);
+    async function paint() { await loadOrders(); if (tab !== 'orders') return; live.textContent = ''; paintOrders(live); var t = $('tabOrders'); if (t) { var c = orders.filter(function (o) { return o.status === 'placed'; }).length; var b = t.querySelector('.bub'); if (c) { if (!b) { b = el('span', 'bub'); t.appendChild(b); } b.textContent = num(c); } else if (b) b.remove(); } }
+    paint(); timer = setInterval(paint, 8000);
+    ordersTab.paint = paint;
+  }
+  function paintOrders(root) {
+    var groups = [['جديدة تستنى ردك', function (o) { return o.status === 'placed'; }], ['شغّالة', function (o) { return ['accepted', 'preparing', 'ready', 'out_for_delivery'].indexOf(o.status) >= 0; }], ['خلصت', function (o) { return ['delivered', 'rejected', 'cancelled'].indexOf(o.status) >= 0; }]];
+    if (!orders.length) { root.appendChild(box('مفيش طلبات لسه', 'أول ما عميل يطلب هيجيلك إشعار وتلاقي الطلب هنا.')); return; }
+    groups.forEach(function (g) {
+      var list = orders.filter(g[1]); if (g[0] === 'خلصت') list = list.slice(0, 10); if (!list.length) return;
+      root.appendChild(el('h2', 'grp', g[0])); list.forEach(function (o) { root.appendChild(orderCard(o)); });
+    });
+  }
+  function orderCard(o) {
+    var c = el('div', 'ord' + (o.status === 'placed' ? ' new' : '')); var s = STATUS[o.status] || [o.status, ''];
+    var top = el('div', 'o-top'); top.appendChild(el('span', 'o-name', o.customer_name)); top.appendChild(el('span', 'st ' + s[1], s[0])); c.appendChild(top);
+    c.appendChild(el('p', 'o-meta', ago(o.created_at) + ' — ' + o.customer_phone));
+    c.appendChild(el('p', 'o-addr', o.address_text));
+    if (o.notes) c.appendChild(el('p', 'o-note', 'ملاحظة العميل: ' + o.notes));
+    var ul = el('ul', 'lines');
+    (o.order_items || []).forEach(function (i) { var li = el('li'); var l = el('span'); l.textContent = num(i.quantity) + ' × ' + i.name; if (i.notes) l.appendChild(el('small', '', i.notes)); li.append(l, el('span', '', money(Number(i.price) * i.quantity))); ul.appendChild(li); });
+    c.appendChild(ul);
+    var t = el('div', 'tot'); t.append(el('span', '', 'الإجمالي كاش (شامل التوصيل ' + (Number(o.delivery_fee) ? money(o.delivery_fee) : 'مجاني') + ')'), el('span', '', money(o.total))); c.appendChild(t);
+    var row = el('div', 'row');
+    function act(label, cls, action) {
+      var b = el('button', 'act sm ' + cls, label); b.type = 'button';
+      b.addEventListener('click', async function () {
+        if (action === 'reject' && !confirm('رفض الطلب ده؟')) return;
+        b.disabled = true; var r = await sb.rpc('store_order_action', { p_order_id: o.id, p_action: action });
+        if (r.error) toast(errText(r.error)); if (ordersTab.paint) await ordersTab.paint(); else render();
+      }); row.appendChild(b);
+    }
+    if (o.status === 'placed') { act('قبول الطلب', 'go', 'accept'); act('رفض', 'danger', 'reject'); }
+    else if (NEXT[o.status]) act(NEXT[o.status][1], 'pri', NEXT[o.status][0]);
+    if (row.children.length) c.appendChild(row);
+    if (['placed', 'accepted', 'preparing', 'ready', 'out_for_delivery'].indexOf(o.status) >= 0) {
+      var row2 = el('div', 'row');
+      var call = el('a', 'act sm soft', 'اتصال بالعميل'); call.href = 'tel:' + o.customer_phone; var wa = el('a', 'act sm soft', 'واتساب'); wa.href = 'https://wa.me/' + waNumber(o.customer_phone); wa.target = '_blank'; wa.rel = 'noopener'; row2.append(call, wa); c.appendChild(row2);
+    }
+    return c;
+  }
+
+  /* ---------- المنيو ---------- */
+  async function menuTab(body) {
+    body.appendChild(el('div', 'sk'));
+    var r = await sb.from('store_items').select('id,name,description,section,price,is_available,sort_order').eq('store_id', store.id).order('sort_order').order('name');
+    items = r.data || []; if (tab !== 'menu') return; body.textContent = '';
+    var add = el('button', 'act pri block', '+ إضافة صنف'); add.type = 'button'; add.style.marginTop = '0'; body.appendChild(add);
+    var formHost = el('div'); body.appendChild(formHost);
+    add.addEventListener('click', function () { itemForm(formHost, null); });
+    if (!items.length) { body.appendChild(box('المنيو فاضي', 'ضيف أول صنف عشان العملاء يقدروا يطلبوا.')); return; }
+    var bySec = {}, order = []; items.forEach(function (i) { if (!bySec[i.section]) { bySec[i.section] = []; order.push(i.section); } bySec[i.section].push(i); });
+    order.forEach(function (sec) {
+      body.appendChild(el('h2', 'sec', sec));
+      bySec[sec].forEach(function (i) {
+        var row = el('div', 'it' + (i.is_available ? '' : ' off')); var m = el('div', 'i-main'); m.appendChild(el('div', 'i-name', i.name)); m.appendChild(el('div', 'i-price', money(i.price))); row.appendChild(m);
+        var sw = el('button', 'sw'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', i.is_available ? 'true' : 'false'); sw.setAttribute('aria-label', 'متاح: ' + i.name);
+        sw.addEventListener('click', async function () { var r = await sb.rpc('store_item_save', { p_id: i.id, p_name: i.name, p_description: i.description, p_section: i.section, p_price: i.price, p_is_available: !i.is_available, p_sort_order: i.sort_order }); if (r.error) toast(errText(r.error)); render(); });
+        var ed = el('button', 'ibtn', '✎'); ed.type = 'button'; ed.setAttribute('aria-label', 'تعديل ' + i.name); ed.addEventListener('click', function () { itemForm(formHost, i); window.scrollTo(0, 0); });
+        var del = el('button', 'ibtn', '✕'); del.type = 'button'; del.setAttribute('aria-label', 'حذف ' + i.name);
+        del.addEventListener('click', async function () { if (!confirm('تحذف "' + i.name + '"؟')) return; var r = await sb.rpc('store_item_delete', { p_id: i.id }); if (r.error) toast(errText(r.error)); render(); });
+        row.append(sw, ed, del); body.appendChild(row);
+      });
+    });
+  }
+  function itemForm(host, it) {
+    host.textContent = ''; var c = el('div', 'card'); c.style.marginTop = '14px'; c.appendChild(el('h2', '', it ? 'تعديل الصنف' : 'صنف جديد'));
+    var name = field(c, 'اسم الصنف', 'i-name', it && it.name, 'text', 'مثلًا: برجر لحم');
+    var desc = field(c, 'وصف (اختياري)', 'i-desc', it && it.description, 'text');
+    var sec = field(c, 'القسم', 'i-sec', it ? it.section : 'وجبات', 'text', 'وجبات، مشروبات، خضار...'); var dl = el('datalist'); dl.id = 'secs'; items.forEach(function (x) { var o = el('option'); o.value = x.section; dl.appendChild(o); }); sec.setAttribute('list', 'secs'); c.appendChild(dl);
+    var price = field(c, 'السعر (جنيه)', 'i-price', it ? it.price : '', 'number'); price.min = '0'; price.inputMode = 'decimal'; price.step = '0.5';
+    var row = el('div', 'row'); var save = el('button', 'act pri', 'حفظ'); save.type = 'button'; var cancel = el('button', 'act soft', 'إلغاء'); cancel.type = 'button'; row.append(save, cancel); c.appendChild(row); host.appendChild(c);
+    cancel.addEventListener('click', function () { host.textContent = ''; });
+    save.addEventListener('click', async function () {
+      save.disabled = true;
+      var r = await sb.rpc('store_item_save', { p_id: it ? it.id : null, p_name: name.value, p_description: desc.value, p_section: sec.value, p_price: Number(price.value), p_is_available: it ? it.is_available : true, p_sort_order: it ? it.sort_order : items.length + 1 });
+      if (r.error) { toast(errText(r.error)); save.disabled = false; return; } toast('تم الحفظ.'); render();
+    });
+  }
+
+  /* ---------- المتجر ---------- */
+  function storeTab(body) {
+    var c = el('div', 'card'); var row = el('div', 'openrow'); var t = el('div'); t.appendChild(el('b', '', store.is_open ? 'المتجر مفتوح' : 'المتجر مقفول')); t.appendChild(el('span', '', store.is_open ? 'العملاء يقدروا يطلبوا دلوقتي.' : 'العملاء مش هيقدروا يطلبوا لحد ما تفتح.')); row.appendChild(t);
+    var sw = el('button', 'sw'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', store.is_open ? 'true' : 'false'); sw.setAttribute('aria-label', 'فتح المتجر');
+    sw.addEventListener('click', async function () { sw.disabled = true; var r = await sb.rpc('store_set_open', { p_open: !store.is_open }); if (r.error) toast(errText(r.error)); await boot(); tab = 'store'; render(); }); row.appendChild(sw); c.appendChild(row); body.appendChild(c);
+    var f = el('div', 'card'); f.appendChild(el('h2', '', 'بيانات المتجر'));
+    var desc = area(f, 'وصف مختصر', 's-desc', store.description); var phone = field(f, 'رقم الموبايل', 's-phone', store.phone, 'tel'); phone.inputMode = 'tel'; var addr = area(f, 'العنوان', 's-addr', store.address);
+    var two = el('div', 'two'); var fa = el('div'), fb = el('div'); two.append(fa, fb);
+    var fee = field(fa, 'سعر التوصيل', 's-fee', store.delivery_fee, 'number'); var min = field(fb, 'أقل قيمة للطلب', 's-min', store.min_order, 'number'); f.appendChild(two);
+    f.appendChild(el('p', 'hint', 'عمولة المنصة حاليًا ' + num(store.commission_percent) + '٪ من قيمة الأصناف (بتتحسب عند تسليم الطلب).'));
+    var save = el('button', 'act pri block', 'حفظ البيانات'); save.type = 'button'; f.appendChild(save); body.appendChild(f);
+    save.addEventListener('click', async function () {
+      save.disabled = true; var r = await sb.rpc('store_update_self', { p_description: desc.value, p_phone: phone.value, p_address: addr.value, p_lat: store.lat, p_lng: store.lng, p_delivery_fee: Number(fee.value) || 0, p_min_order: Number(min.value) || 0 });
+      if (r.error) { toast(errText(r.error)); save.disabled = false; return; } toast('تم حفظ البيانات.'); await boot(); tab = 'store'; render();
+    });
+  }
+
+  K.onChange(function () { if (tab === 'orders' && ordersTab.paint) ordersTab.paint(); });
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && tab === 'orders' && ordersTab.paint) ordersTab.paint(); });
+  await boot();
+});
+</script>
+</body>
+</html>

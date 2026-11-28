@@ -61,11 +61,15 @@
     next();
   }
 
+  var clientWaiters = null;
   function getClient(cb) {
     if (sb) return cb(sb);
+    if (clientWaiters) { clientWaiters.push(cb); return; } // تحميل واحد بس مهما كان عدد الطالبين
+    clientWaiters = [cb];
     loadClient(function () {
       if (!sb) sb = window.__khadamatnaClient || window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      cb(sb);
+      var waiters = clientWaiters; clientWaiters = null;
+      waiters.forEach(function (f) { try { f(sb); } catch (e) {} });
     });
   }
 

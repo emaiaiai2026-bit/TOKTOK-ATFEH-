@@ -256,7 +256,9 @@ document.addEventListener('DOMContentLoaded', async function () {
       var key = norm(q.value); list.textContent = '';
       var shown = stores.filter(function (s) { return !key || norm(s.name + ' ' + (s.description || '')).indexOf(key) >= 0; });
       if (!shown.length) {
-        list.appendChild(emptyBox(stores.length ? 'مفيش نتيجة للبحث ده' : COPY.none, stores.length ? 'جرّب اسم تاني.' : 'جرّب بعد شوية.')); return;
+        var box = emptyBox(stores.length ? 'مفيش نتيجة للبحث ده' : COPY.none, stores.length ? 'جرّب اسم تاني.' : 'جرّب بعد شوية، أو سجّل ' + COPY.noun + 'ك واستقبل الطلبات.');
+        if (!stores.length) { var a = el('a', 'link', 'سجّل ' + COPY.noun + 'ك'); a.href = 'store-dashboard.html'; box.appendChild(a); }
+        list.appendChild(box); return;
       }
       shown.forEach(function (s) {
         var b = el('button', 'store' + (s.is_open ? '' : ' closed')); b.type = 'button';

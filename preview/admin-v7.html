@@ -160,6 +160,12 @@
       <div id="customerList"></div>
     </section>
 
+    <section class="pane hidden" id="paneStores">
+      <h2>المطاعم والبقالة</h2>
+      <p class="hint">مراجعة طلبات تسجيل المتاجر واعتمادها، وتحديد عمولة المنصة لكل متجر.</p>
+      <div id="adminStoreList"></div>
+    </section>
+
     <section class="pane hidden" id="paneDoctors">
       <h2>اعتماد الأطباء</h2>
       <p class="hint">مراجعة طلبات الانضمام واعتماد الطبيب فقط. إدارة العيادة والمواعيد من داخل الخدمة الطبية.</p>
@@ -212,6 +218,7 @@
     <button id="tabRides">الرحلات</button>
     <button id="tabCustomers">الزبائن</button>
     <button id="tabDoctors">طلبات الأطباء</button>
+    <button id="tabStores">المتاجر</button>
     <button id="tabSettings">الأسعار</button>
   </nav>
 </div>
@@ -559,7 +566,7 @@ async function runAdminPinGate(){
 let curTab = 'map';
 function showTab(name){
   curTab = name;
-  const panes = { map: 'paneMap', drivers: 'paneDrivers', rides: 'paneRides', customers: 'paneCustomers', doctors: 'paneDoctors', settings: 'paneSettings' };
+  const panes = { map: 'paneMap', drivers: 'paneDrivers', rides: 'paneRides', customers: 'paneCustomers', doctors: 'paneDoctors', stores: 'paneStores', settings: 'paneSettings' };
   Object.entries(panes).forEach(([k, id]) => {
     $(id).classList.toggle('hidden', k !== name);
     $('tab' + k[0].toUpperCase() + k.slice(1)).classList.toggle('on', k === name);
@@ -568,13 +575,55 @@ function showTab(name){
   if (name === 'rides') loadRides();
   if (name === 'customers') loadCustomers();
   if (name === 'doctors') { loadAdminDoctors(); loadDoctorSubscriptionAdmin(); }
+  if (name === 'stores') loadAdminStores();
 }
 $('tabMap').onclick = () => showTab('map');
 $('tabDrivers').onclick = () => showTab('drivers');
 $('tabRides').onclick = () => showTab('rides');
 $('tabCustomers').onclick = () => showTab('customers');
 $('tabDoctors').onclick = () => showTab('doctors');
+$('tabStores').onclick = () => showTab('stores');
 $('tabSettings').onclick = () => showTab('settings');
+
+/* ---------- المتاجر: المطاعم والبقالة ---------- */
+const STORE_STATUS = { pending: ['مستني الموافقة', 'wait'], approved: ['معتمد', 'on'], rejected: ['مرفوض', 'bad'], suspended: ['موقوف', 'bad'] };
+const STORE_TYPE = { restaurant: 'مطعم', grocery: 'بقالة' };
+async function loadAdminStores(){
+  const box = $('adminStoreList'); if (!box) return;
+  box.textContent = 'جارٍ تحميل المتاجر...';
+  const { data, error } = await sb.rpc('admin_list_stores');
+  if (error) { box.textContent = 'مشكلة في جلب المتاجر: ' + error.message; return; }
+  box.textContent = '';
+  if (!(data || []).length) { const e = document.createElement('div'); e.className = 'meta'; e.textContent = 'مفيش متاجر مسجّلة لسه.'; box.appendChild(e); return; }
+  const mk = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  async function setStatus(st, status){
+    const { error: e1 } = await sb.rpc('admin_set_store_status', { p_store_id: st.id, p_status: status });
+    if (e1) { toast('تعذر التحديث: ' + e1.message); return; }
+    toast('تم التحديث.'); loadAdminStores();
+  }
+  data.forEach(st => {
+    const card = mk('div', 'card'), top = mk('div', 'row');
+    top.append(mk('div', 'name', st.name));
+    const s = STORE_STATUS[st.approval_status] || [st.approval_status, ''];
+    top.append(mk('span', 'chip ' + s[1], s[0])); card.append(top);
+    card.append(mk('div', 'meta', (STORE_TYPE[st.type] || st.type) + ' • ' + st.phone + (st.is_open ? ' • مفتوح' : ' • مقفول')));
+    card.append(mk('div', 'meta', st.address));
+    card.append(mk('div', 'meta', 'صاحب المتجر: ' + (st.owner_name || '—') + ' • الطلبات: ' + Number(st.orders_count).toLocaleString('ar-EG') + ' • العمولة: ' + Number(st.commission_percent).toLocaleString('ar-EG') + '٪'));
+    const act = mk('div', 'actions');
+    const btn = (label, cls, fn) => { const b = mk('button', 'sm ' + cls, label); b.onclick = fn; act.append(b); };
+    if (st.approval_status !== 'approved') btn('موافقة', 'go', () => setStatus(st, 'approved'));
+    if (st.approval_status === 'pending') btn('رفض', 'stop', () => { if (confirm('رفض طلب ' + st.name + '؟')) setStatus(st, 'rejected'); });
+    if (st.approval_status === 'approved') btn('إيقاف', 'stop', () => { if (confirm('إيقاف ' + st.name + '؟')) setStatus(st, 'suspended'); });
+    btn('العمولة', 'pay', async () => {
+      const v = prompt('نسبة عمولة المنصة من قيمة الأصناف (من 0 إلى 100):', String(st.commission_percent));
+      if (v === null) return; const n = Number(v);
+      if (!Number.isFinite(n) || n < 0 || n > 100) { toast('اكتب رقم من 0 إلى 100'); return; }
+      const { error: e2 } = await sb.rpc('admin_set_store_commission', { p_store_id: st.id, p_percent: n });
+      if (e2) toast('تعذر التحديث: ' + e2.message); else { toast('تم تحديث العمولة.'); loadAdminStores(); }
+    });
+    card.append(act); box.append(card);
+  });
+}
 
 /* ---------- مراجعة واعتماد الأطباء ---------- */
 async function loadAdminDoctors(){

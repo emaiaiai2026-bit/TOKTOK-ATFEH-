@@ -284,3 +284,18 @@ label{color:var(--kn-navy)}
 @media (prefers-reduced-motion:reduce){
   .btn,.primary,.btn-outline,.mini,.logout,.mbtn,.choice,.slot,.vt,.sm,.google-btn,.tile.on,.doctor{transition:none}
 }
+
+/* لوحة الإدارة: تبويبات كتير قابلة للتمرير بدل ما تتزاحم */
+.kn-admin nav{overflow-x:auto;scrollbar-width:none}
+.kn-admin nav::-webkit-scrollbar{display:none}
+.kn-admin nav button{flex:1 0 auto;padding-inline:15px;white-space:nowrap}
+
+/* بطاقة «متجرك» في الرئيسية: عريضة وبيضاء مجسّمة (عشان تتميز عن بطاقة السواقين الكحلي) */
+.kn-home .tile.wide.vendor{
+  color:var(--kn-navy);border:1px solid rgba(11,31,75,.07);
+  background:linear-gradient(180deg,#fff,#F6F9FF);
+  box-shadow:inset 0 1.5px 0 #fff,0 5px 0 #C5D0E8,0 14px 22px -8px rgba(11,31,75,.3);
+}
+.kn-home .tile.wide.vendor:active{background:linear-gradient(180deg,#fff,#F6F9FF);transform:translateY(4px);box-shadow:inset 0 1.5px 0 #fff,0 1px 0 #C5D0E8}
+.kn-home .tile.wide.vendor .ic{background:radial-gradient(circle at 35% 28%,#fff,#FFF1C2);color:var(--kn-navy);box-shadow:0 0 0 2px rgba(255,180,0,.55),0 5px 10px -4px rgba(184,116,0,.45)}
+.kn-home .tile.wide.vendor small{color:var(--kn-muted)}
